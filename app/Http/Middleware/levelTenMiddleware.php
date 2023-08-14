@@ -3,19 +3,49 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class levelTenMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
-     */
     public function handle(Request $request, Closure $next)
     {
-        return $next($request);
+        $authorizationHeader = $request->header('Authorization');
+
+        if (strpos($authorizationHeader, 'Bearer ') !== 0) {
+            return response()->json(['error' => 'Invalid Authorization header', 'code' => 401], 401);
+        }
+
+        $jwt = str_replace('Bearer ', '', $authorizationHeader);
+
+        try {
+            $decoded = JWT::decode($jwt, new Key(env('JWT_SECRET'), 'HS256'));
+
+            $appId = '15';
+            $urlAkses = "http://36.92.181.10:4763/api/akses/mine/{$appId}/{$decoded->sub}";
+
+            $getakses = Http::withHeaders([
+                'Authorization' => $authorizationHeader,
+            ])->get($urlAkses);
+
+            $akses = $getakses->json();
+
+            if (!isset($akses['data']) || $akses['data']['level_akses'] < 10) {
+                return response()->json(['code' => 401, 'error' => 'Don`t have access for this feature'], 401);
+            }
+
+            if (Carbon::now()->timestamp >= $decoded->exp) {
+                return response()->json(['code' => 401, 'error' => 'Token has expired'], 401);
+            }
+
+            $request->merge(['user_token' => $authorizationHeader]);
+
+            return $next($request);
+        } catch (\Exception $e) {
+            return response()->json(['code' => 401, 'error' => 'Invalid or expired token'], 401);
+        }
     }
 }
