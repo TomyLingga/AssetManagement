@@ -55,12 +55,22 @@ Route::group(['middleware' => 'levelten.checker'], function () {
     Route::get('sub-group/group/{id}', [App\Http\Controllers\Api\Grup\SubGroupController::class, 'indexGrup']);
 
     //Fixed-Asset
-    Route::get('fixed-asset', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'index']);
+    Route::post('fixed-asset', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'index']);
     Route::post('fixed-asset/add', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'store']);
-    Route::get('fixed-asset/get/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'show']);
+    Route::post('fixed-asset/get/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'show']);
     Route::post('fixed-asset/update/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'update']);
     Route::get('fixed-asset/active/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'toggleActive']);
 
+    //FairValue
+    Route::get('fair-value/asset/{asetId}', [App\Http\Controllers\Api\Management\FairValueController::class, 'index']);
+    Route::post('fair-value/add/{asetId}', [App\Http\Controllers\Api\Management\FairValueController::class, 'store']);
+    Route::post('fair-value/update/{asetId}/{id}', [App\Http\Controllers\Api\Management\FairValueController::class, 'update']);
+    Route::delete('fair-value/delete/{asetId}/{id}', [App\Http\Controllers\Api\Management\FairValueController::class, 'destroy']);
+    //ValueInUse
+    Route::get('value-in-use/asset/{asetId}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'index']);
+    Route::post('value-in-use/add/{asetId}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'store']);
+    Route::post('value-in-use/update/{asetId}/{id}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'update']);
+    Route::delete('value-in-use/delete/{asetId}/{id}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'destroy']);
 });
 
 Route::fallback(function () {

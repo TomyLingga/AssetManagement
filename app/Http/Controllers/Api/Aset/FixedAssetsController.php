@@ -16,98 +16,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Carbon\Carbon;
 
 class FixedAssetsController extends Controller
 {
     private $token;
     private $urlDept = "http://36.92.181.10:4763/api/department/get/";
-    private $urlAllDept = "http://36.92.181.10:4763/api/department";
     private $urlUser = "http://36.92.181.10:4763/api/user/get/";
-
-    public function __construct()
-    {
-        $this->middleware(function ($request, $next) {
-            $this->token = $request->get('user_token');
-            return $next($request);
-        });
-    }
-
-    private function calculateAssetAge($tglPerolehan)
-    {
-        $currentDate = now();
-        return $currentDate->diffInMonths($tglPerolehan);
-    }
-
-    private function getMonthlyDepreciation($fixedAsset)
-    {
-        return $fixedAsset->nilai_perolehan / $fixedAsset->masa_manfaat;
-    }
-
-    private function getInitialBalance($tglPerolehan, $monthlyDepreciation, $nilaiDepresiasiAwal)
-    {
-        $tglPerolehanYear = Carbon::parse($tglPerolehan)->year;
-        // $currentYear = 2025;
-        $currentYear = now()->year;
-        $previousYear = $currentYear - 1;
-
-        $startOf2023 = Carbon::createFromDate(2022, 12, 31)->endOfDay();
-        // $startOf2023 = Carbon::createFromDate(2023, 1, 1)->startOfDay();
-        $lastYearEndDate = Carbon::create($previousYear, 12, 31)->endOfDay();
-        $lastYearStartDate = Carbon::create($previousYear, 1, 1)->startOfDay();
-
-        if ($tglPerolehanYear < 2023) {
-            if ($currentYear <= 2023) {
-                $initialBalance = $nilaiDepresiasiAwal;
-            } else {
-                $monthsInLastYear = $startOf2023->diffInMonths($lastYearEndDate);
-                $initialBalance = $nilaiDepresiasiAwal + ($monthlyDepreciation * $monthsInLastYear);
-            }
-        } else {
-            if ($lastYearStartDate->year < $tglPerolehanYear) {
-                $initialBalance = 0;
-            } else {
-                $tglPerolehan = Carbon::parse($tglPerolehan);
-                $monthFromTglPerolehan = max($tglPerolehan->diffInMonths($lastYearEndDate), 1);
-                $initialBalance = $monthlyDepreciation * $monthFromTglPerolehan;
-            }
-        }
-
-        return floatval($initialBalance);
-    }
-
-    private function getAccumulatedDepreciation($assetAge, $monthlyDepreciation, $tglPerolehan, $nilai_depresiasi_awal)
-    {
-        $tglPerolehanYear = Carbon::parse($tglPerolehan)->year;
-
-        if ($tglPerolehanYear < 2023) {
-            $monthsSince2023 = Carbon::createFromDate(2022, 12, 31)->endOfDay()->diffInMonths(now());
-
-            return ($monthlyDepreciation * $monthsSince2023) + $nilai_depresiasi_awal;
-        }
-        return $monthlyDepreciation * $assetAge;
-    }
-
-    private function getBookValue($nilaiPerolehan, $accumulatedDepreciation)
-    {
-        return $nilaiPerolehan - $accumulatedDepreciation;
-    }
-
-    private function getDepartmentData()
-    {
-        return Http::withHeaders([
-            'Authorization' => $this->token,
-        ])->get($this->urlAllDept)->json()['data'] ?? [];
-    }
 
     private function findOrFail($model, $conditions)
     {
         return $model::where($conditions)->firstOrFail();
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $fixedAssets = FixedAssets::with([
+        $tglNow = $request->input('tanggal') ?? now()->toDateString();
+        $fixedAssetsData = FixedAssets::with([
             'subGroup.group',
             'location.area',
             'supplier',
@@ -123,7 +47,7 @@ class FixedAssetsController extends Controller
         ->select('fixed_assets.*')
         ->get();
 
-        if (!$fixedAssets ) {
+        if (!$fixedAssetsData ) {
             return response()->json([
                 'message' => "Fixed Assets Not Found",
                 'success' => true,
@@ -131,56 +55,41 @@ class FixedAssetsController extends Controller
             ], 401);
         }
 
-        $deptData = $this->getDepartmentData();
-        $departmentIdMapping = collect($deptData)->keyBy('id');
-
-        $romanNumeralMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-
-        $fixedAssets->transform(function ($fixedAsset) use ($departmentIdMapping, $romanNumeralMonths) {
-            $departmentId = $fixedAsset->id_departemen;
-
-            $matchingDept = $departmentIdMapping->get($departmentId);
-
-            if ($matchingDept) {
-                $departmentCode = $matchingDept['kode'];
-
-                $tglPerolehan = Carbon::parse($fixedAsset->tgl_perolehan);
-                $tglPerolehanMonth = $tglPerolehan->format('m');
-                $tglPerolehanYear = $tglPerolehan->format('Y');
-                $groupFormat = $fixedAsset->subGroup->group->format;
-                $nomorAset = $fixedAsset->nomor;
-
-                $monthInRoman = $romanNumeralMonths[(int) $tglPerolehanMonth - 1];
-
-                $fixedAsset->nomor = "{$departmentCode}_INL/{$monthInRoman}/{$tglPerolehanYear}/{$groupFormat}{$nomorAset}";
-                $fixedAsset->spesifikasi = json_decode($fixedAsset->spesifikasi);
-
-                $assetAge = $this->calculateAssetAge($tglPerolehan);
-                $fixedAsset->assetAge = $assetAge;
-
-                $monthlyDepreciation = $this->getMonthlyDepreciation($fixedAsset);
-                $fixedAsset->monthlyDepreciation = $monthlyDepreciation;
-                $fixedAsset->annualDepreciation = $monthlyDepreciation * 12;
-
-                $initialBalance = $this->getInitialBalance($fixedAsset->tgl_perolehan, $monthlyDepreciation, $fixedAsset->nilai_depresiasi_awal);
-                $fixedAsset->initialBalanceThisYear = $initialBalance;
-
-                $accumulatedDepreciation = $this->getAccumulatedDepreciation($assetAge, $monthlyDepreciation, $tglPerolehan, $fixedAsset->nilai_depresiasi_awal);
-                $fixedAsset->accumulatedDepreciation = $accumulatedDepreciation;
-
-                $bookValue = $this->getBookValue($fixedAsset->nilai_perolehan, $fixedAsset->accumulatedDepreciation);
-                $fixedAsset->bookValue = $bookValue;
-            }
-
-            $fixedAsset->formated_kode_aktiva = $fixedAsset->formated_kode_aktiva;
-            $fixedAsset->formated_kode_penyusutan = $fixedAsset->formated_kode_penyusutan;
-
-            return $fixedAsset;
-        });
+        $fixedAssets = $this->formatting($fixedAssetsData, $tglNow);
 
         return response()->json([
             'data' => $fixedAssets,
             'message' => 'All Fixed Assets Retrieved Successfully',
+            'code' => 200,
+            'success' => true,
+        ], 200);
+    }
+
+    public function show(Request $request, $id)
+    {
+        $tglNow = $request->input('tanggal') ?? now()->toDateString();
+        $fixedAssetData = FixedAssets::with([
+            'subGroup.group',
+            'location.area',
+            'supplier',
+            'adjustment',
+            'fairValues',
+            'valueInUses',
+        ])->find($id);
+
+        if (!$fixedAssetData ) {
+            return response()->json([
+                'message' => "Fixed Asset Not Found",
+                'success' => true,
+                'code' => 401
+            ], 401);
+        }
+
+        $fixedAsset = $this->formattingById($fixedAssetData, $tglNow);
+
+        return response()->json([
+            'data' => $fixedAsset,
+            'message' => 'Fixed Asset Retrieved Successfully',
             'code' => 200,
             'success' => true,
         ], 200);
@@ -331,65 +240,6 @@ class FixedAssetsController extends Controller
                 'success' => false,
             ], 500);
         }
-    }
-
-    public function show($id)
-    {
-        $fixedAsset = FixedAssets::with([
-            'subGroup.group',
-            'location.area',
-            'supplier',
-            'adjustment',
-            'fairValues',
-            'valueInUses',
-        ])->find($id);
-
-        if (!$fixedAsset ) {
-            return response()->json([
-                'message' => "Fixed Asset Not Found",
-                'success' => true,
-                'code' => 401
-            ], 401);
-        }
-
-        $departmentId = $fixedAsset->id_departemen;
-        $a = $fixedAsset->spesifikasi;
-
-        $deptResponse = Http::withHeaders([
-            'Authorization' => $this->token,
-        ])->get($this->urlDept . $departmentId);
-
-        $deptData = $deptResponse->json();
-
-        if (!isset($deptData['data'])) {
-            return response()->json([
-                'message' => 'Department not found',
-                'success' => true,
-                'code' => 401
-            ], 401);
-        }
-
-        $departmentData = $deptData['data'];
-
-        $departmentCode = $departmentData['kode'];
-        $tglPerolehanMonth = Carbon::parse($fixedAsset->tgl_perolehan)->format('m');
-        $tglPerolehanYear = Carbon::parse($fixedAsset->tgl_perolehan)->format('Y');
-        $groupFormat = $fixedAsset->subGroup->group->format;
-        $nomorAset = $fixedAsset->nomor;
-        $romanNumeralMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-        $monthInRoman = $romanNumeralMonths[(int) $tglPerolehanMonth - 1];
-        $fixedAsset->nomor = "{$departmentCode}_INL/{$monthInRoman}/{$tglPerolehanYear}/{$groupFormat}{$nomorAset}";
-        $fixedAsset->spesifikasi = json_decode($fixedAsset->spesifikasi);
-
-        $fixedAsset->formated_kode_aktiva = $fixedAsset->formated_kode_aktiva;
-        $fixedAsset->formated_kode_penyusutan = $fixedAsset->formated_kode_penyusutan;
-
-        return response()->json([
-            'data' => $fixedAsset,
-            'message' => 'Fixed Asset Retrieved Successfully',
-            'code' => 200,
-            'success' => true,
-        ], 200);
     }
 
     public function update(Request $request, $id)
