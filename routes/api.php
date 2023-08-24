@@ -66,11 +66,23 @@ Route::group(['middleware' => 'levelten.checker'], function () {
     Route::post('fair-value/add/{asetId}', [App\Http\Controllers\Api\Management\FairValueController::class, 'store']);
     Route::post('fair-value/update/{asetId}/{id}', [App\Http\Controllers\Api\Management\FairValueController::class, 'update']);
     Route::delete('fair-value/delete/{asetId}/{id}', [App\Http\Controllers\Api\Management\FairValueController::class, 'destroy']);
+
     //ValueInUse
     Route::get('value-in-use/asset/{asetId}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'index']);
     Route::post('value-in-use/add/{asetId}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'store']);
     Route::post('value-in-use/update/{asetId}/{id}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'update']);
     Route::delete('value-in-use/delete/{asetId}/{id}', [App\Http\Controllers\Api\Management\ValueInUseController::class, 'destroy']);
+
+    //Export Fixed Asset
+    Route::post('fixed-asset/export', [App\Http\Controllers\Api\Jurnal\FixedAssetExportController::class, 'index']);
+    //Jurnal Pengakuan Aset
+    Route::get('journal/asset-recognition', [App\Http\Controllers\Api\Jurnal\AssetRecognitionJournalController::class, 'index']);
+    //Jurnal Depresiasi
+    Route::get('journal/asset-depreciation', [App\Http\Controllers\Api\Jurnal\AssetDepreciationJournalController::class, 'index']);
+    //Jurnal Koreksi Nilai Wajar
+    Route::post('journal/asset-correction-fair-value', [App\Http\Controllers\Api\Jurnal\AssetCorrectionJournalController::class, 'nilaiWajar']);
+    //Jurnal Koreksi Value in Use
+    Route::post('journal/asset-correction-value-in-use', [App\Http\Controllers\Api\Jurnal\AssetCorrectionJournalController::class, 'valueInUse']);
 });
 
 Route::fallback(function () {

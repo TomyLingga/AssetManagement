@@ -45,7 +45,7 @@ class levelTenMiddleware
 
             return $next($request);
         } catch (\Exception $e) {
-            return response()->json(['code' => 401, 'error' => 'Invalid or expired token'], 401);
+            return response()->json(['code' => 401, 'message' => 'Invalid or expired token', 'err' => $e->getTrace()[0],'errMsg' => $e->getMessage(),], 401);
         }
     }
 }

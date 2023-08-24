@@ -27,25 +27,25 @@ class Controller extends BaseController
         });
     }
 
-    private function calculateAssetAge($tglPerolehan, $tglNow)
+    public function calculateAssetAge($tglPerolehan, $tglNow)
     {
         $currentDate = Carbon::parse($tglNow);
         return $currentDate->diffInMonths($tglPerolehan);
     }
 
-    private function getEndMasaManfaatDate($fixedAsset)
+    public function getEndMasaManfaatDate($fixedAsset)
     {
         $tglPerolehan = Carbon::parse($fixedAsset->tgl_perolehan);
         $endMasaManfaat = $tglPerolehan->copy()->addMonths($fixedAsset->masa_manfaat)->startOfDay();
         return $endMasaManfaat->toDateString();
     }
 
-    private function getMonthlyDepreciation($fixedAsset)
+    public function getMonthlyDepreciation($fixedAsset)
     {
         return $fixedAsset->nilai_perolehan / $fixedAsset->masa_manfaat;
     }
 
-    private function calculateInitialBalance($tglPerolehan, $monthlyDepreciation, $initialDepreciationValue, $endMasaManfaatDate, $tglNow)
+    public function calculateInitialBalance($tglPerolehan, $monthlyDepreciation, $initialDepreciationValue, $endMasaManfaatDate, $tglNow)
     {
         $tglPerolehan = Carbon::parse($tglPerolehan)->addMonth();
         $endMasaManfaatDate = Carbon::parse($endMasaManfaatDate);
@@ -96,7 +96,7 @@ class Controller extends BaseController
         return $initialBalances;
     }
 
-    private function getAccumulatedDepreciation($assetAge, $monthlyDepreciation, $tglPerolehan, $nilaiDepresiasiAwal, $masa_manfaat, $tglNow)
+    public function getAccumulatedDepreciation($assetAge, $monthlyDepreciation, $tglPerolehan, $nilaiDepresiasiAwal, $masa_manfaat, $tglNow)
     {
         $tglNow = Carbon::parse($tglNow);
         $tglPerolehanYear = Carbon::parse($tglPerolehan)->year;
@@ -114,7 +114,7 @@ class Controller extends BaseController
         return min($assetAge, $masa_manfaat) * $monthlyDepreciation;
     }
 
-    private function getBookValue($nilaiPerolehan, $accumulatedDepreciation)
+    public function getBookValue($nilaiPerolehan, $accumulatedDepreciation)
     {
         $bookValue = $nilaiPerolehan - $accumulatedDepreciation;
         return max($bookValue, 0);
