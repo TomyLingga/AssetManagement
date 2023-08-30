@@ -217,7 +217,6 @@ class Controller extends BaseController
         $fixedAsset->formated_kode_penyusutan = $fixedAsset->formated_kode_penyusutan;
         $formattedLogs = $this->formatLogs($fixedAsset->logs);
         $fixedAsset->history = $formattedLogs;
-        // dd($fixedAsset->logs);
 
         return $fixedAsset;
     }

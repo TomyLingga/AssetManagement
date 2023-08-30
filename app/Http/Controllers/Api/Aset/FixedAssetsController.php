@@ -83,7 +83,7 @@ class FixedAssetsController extends Controller
         }
 
         $fixedAsset = $this->formattingById($fixedAssetData, $tglNow);
-
+        unset($fixedAsset->logs);
         return response()->json([
             'data' => $fixedAsset,
             'message' => 'Fixed Asset Retrieved Successfully',
