@@ -13,16 +13,18 @@ class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    private $token;
-    private $urlDept = "http://36.92.181.10:4763/api/department/get/";
-    private $urlAllDept = "http://36.92.181.10:4763/api/department";
-    private $urlUser = "http://36.92.181.10:4763/api/user/get/";
-    private $urlAllUser = "http://36.92.181.10:4763/api/user";
+    public $token;
+    public $userData;
+    public $urlDept = "http://36.92.181.10:4763/api/department/get/";
+    public $urlAllDept = "http://36.92.181.10:4763/api/department";
+    public $urlUser = "http://36.92.181.10:4763/api/user/get/";
+    public $urlAllUser = "http://36.92.181.10:4763/api/user";
 
     public function __construct()
     {
         $this->middleware(function ($request, $next) {
             $this->token = $request->get('user_token');
+            $this->userData = $request->get('decoded');
             return $next($request);
         });
     }
@@ -120,28 +122,28 @@ class Controller extends BaseController
         return max($bookValue, 0);
     }
 
-    private function getDepartmentData()
+    public function getDepartmentData()
     {
         return Http::withHeaders([
             'Authorization' => $this->token,
         ])->get($this->urlAllDept)->json()['data'] ?? [];
     }
 
-    private function getDepartmentById($id)
+    public function getDepartmentById($id)
     {
         return Http::withHeaders([
             'Authorization' => $this->token,
         ])->get($this->urlDept. $id)->json()['data'] ?? [];
     }
 
-    private function getUserData()
+    public function getUserData()
     {
         return Http::withHeaders([
             'Authorization' => $this->token,
         ])->get($this->urlAllUser)->json()['data'] ?? [];
     }
 
-    private function getUserById($id)
+    public function getUserById($id)
     {
         return Http::withHeaders([
             'Authorization' => $this->token,
@@ -213,6 +215,9 @@ class Controller extends BaseController
         $fixedAsset->bookValue = $bookValue;
         $fixedAsset->formated_kode_aktiva = $fixedAsset->formated_kode_aktiva;
         $fixedAsset->formated_kode_penyusutan = $fixedAsset->formated_kode_penyusutan;
+        $formattedLogs = $this->formatLogs($fixedAsset->logs);
+        $fixedAsset->history = $formattedLogs;
+        // dd($fixedAsset->logs);
 
         return $fixedAsset;
     }
@@ -281,5 +286,54 @@ class Controller extends BaseController
             return $fixedAsset;
         });
         return $fixedAssets;
+    }
+
+    public function formatLogs($logs)
+    {
+        return $logs->map(function ($log) {
+            $user = $this->getUserById($log->user_id);
+            $oldData = json_decode($log->old_data, true);
+            $newData = json_decode($log->new_data, true);
+
+            $changes = [];
+            if ($log->action === 'update') {
+                $changes = collect($newData)->map(function ($value, $key) use ($oldData) {
+                    if ($oldData[$key] !== $value) {
+                        return [
+                            'old' => $oldData[$key],
+                            'new' => $value,
+                        ];
+                    }
+                })->filter();
+            }
+
+            return [
+                'action' => $log->action,
+                'user_name' => $user['name'],
+                'changes' => $changes,
+                'created_at' => $log->created_at,
+            ];
+        })->sortByDesc('created_at');
+    }
+
+    public function formatLogsForMultiple($logs)
+    {
+        $formattedLogs = $logs->map(function ($log) {
+            $user = $this->getUserById($log->user_id);
+            $oldData = json_decode($log->old_data, true);
+            $newData = json_decode($log->new_data, true);
+
+            return [
+                'action' => $log->action,
+                'user_name' => $user['name'],
+                'old_data' => $oldData,
+                'new_data' => $newData,
+                'created_at' => $log->created_at,
+            ];
+        });
+
+        $formattedLogs = $formattedLogs->sortByDesc('created_at');
+
+        return $formattedLogs;
     }
 }

@@ -7,9 +7,9 @@ use App\Models\Adjustment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
+use App\Services\LoggerService;
 
 class AdjustmentController extends Controller
 {
@@ -32,16 +32,29 @@ class AdjustmentController extends Controller
                 ], 401);
             }
 
+            // $adjustmentsWithLogs = $adjustments->map(function ($adjustment) {
+            //     return [
+            //         'id' => $adjustment->id,
+            //         'nama_margin' => $adjustment->nama_margin,
+            //         'kode_margin' => $adjustment->kode_margin,
+            //         'nama_loss' => $adjustment->nama_loss,
+            //         'kode_loss' => $adjustment->kode_loss,
+            //         'logs' => $this->formatLogs($adjustment->logs),
+            //     ];
+            // });
+
             return response()->json([
                 'data' => $adjustments,
                 'message' => $this->messageAll,
                 'code' => 200
             ], 200);
-        } catch (QueryException $ex) {
+        } catch (QueryException $e) {
             return response()->json([
                 'message' => $this->messageFail,
-                'errMsg' => $ex->getMessage(),
-                'code' => 500
+                'err' => $e->getTrace()[0],
+                'errMsg' => $e->getMessage(),
+                'code' => 500,
+                'success' => false,
             ], 500);
         }
     }
@@ -51,21 +64,21 @@ class AdjustmentController extends Controller
         try {
             $adjustment = Adjustment::findOrFail($id);
 
+            $adjustment->history = $this->formatLogs($adjustment->logs);
+            unset($adjustment->logs);
+
             return response()->json([
                 'data' => $adjustment,
                 'message' => $this->messageSuccess,
                 'code' => 200
             ], 200);
-        } catch (ModelNotFoundException $ex) {
-            return response()->json([
-                'message' => $this->messageMissing,
-                'code' => 401
-            ], 401);
-        } catch (QueryException $ex) {
+        } catch (QueryException $e) {
             return response()->json([
                 'message' => $this->messageFail,
-                'errMsg' => $ex->getMessage(),
-                'code' => 500
+                'err' => $e->getTrace()[0],
+                'errMsg' => $e->getMessage(),
+                'code' => 500,
+                'success' => false,
             ], 500);
         }
     }
@@ -91,6 +104,8 @@ class AdjustmentController extends Controller
             }
 
             $data = Adjustment::create($request->all());
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -152,7 +167,10 @@ class AdjustmentController extends Controller
                 'kode_loss' => $request->filled('kode_loss') ? $request->kode_loss : $adjustment->kode_loss,
             ];
 
+            $oldData = $adjustment->toArray();
             $adjustment->update($dataToUpdate);
+
+            LoggerService::logAction($this->userData, $adjustment, 'update', $oldData, $adjustment->toArray());
 
             DB::commit();
 

@@ -23,4 +23,8 @@ class Area extends Model
         return $this->hasMany(Location::class, 'id_area');
     }
 
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'model');
+    }
 }

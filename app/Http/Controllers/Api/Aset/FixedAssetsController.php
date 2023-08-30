@@ -16,13 +16,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Services\LoggerService;
 
 class FixedAssetsController extends Controller
 {
-    private $token;
-    private $urlDept = "http://36.92.181.10:4763/api/department/get/";
-    private $urlUser = "http://36.92.181.10:4763/api/user/get/";
-
     private function findOrFail($model, $conditions)
     {
         return $model::where($conditions)->firstOrFail();
@@ -175,6 +172,8 @@ class FixedAssetsController extends Controller
 
             $month = date('m', strtotime($tglPerolehan));
             $year = date('Y', strtotime($tglPerolehan));
+            $attemptCount = 0;
+            $maxAttempts = 15;
 
             $nomorAset = FixedAssets::whereHas('subGroup', function ($query) use ($groupId) {
                 $query->where('id_grup', $groupId);
@@ -186,6 +185,36 @@ class FixedAssetsController extends Controller
 
             $numberOfLeadingZeros = max(0, 5 - strlen((string) $nomorAset));
             $formattedNomorAset = $numberOfLeadingZeros > 0 ? str_repeat('0', $numberOfLeadingZeros) . $nomorAset : $nomorAset;
+
+            do {
+                $existingAsset = FixedAssets::whereHas('subGroup', function ($query) use ($groupId) {
+                    $query->where('id_grup', $groupId);
+                })
+                    ->where('id_departemen', $departmentData['id'])
+                    ->whereMonth('tgl_perolehan', $month)
+                    ->whereYear('tgl_perolehan', $year)
+                    ->where('nomor', $formattedNomorAset)
+                    ->first();
+
+                if ($existingAsset) {
+                    $nomorAset = $nomorAset + 1;
+                    $formattedNomorAset = str_pad($nomorAset, 5, '0', STR_PAD_LEFT);
+
+                    $attemptCount++;
+                } else {
+                    break;
+                }
+
+            } while ($attemptCount < $maxAttempts);
+
+            if ($attemptCount === $maxAttempts) {
+                DB::rollback();
+                return response()->json([
+                    'message' => 'Could not find an available asset number after multiple attempts',
+                    'success' => false,
+                    'code' => 409
+                ], 409);
+            }
 
             $data = FixedAssets::create([
                 'id_sub_grup' => $subGroupId,
@@ -221,6 +250,8 @@ class FixedAssetsController extends Controller
             ]);
 
             $data->load('subGroup', 'location', 'supplier', 'adjustment', 'fairValues', 'valueInUses');
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -258,7 +289,6 @@ class FixedAssetsController extends Controller
                 'nilai_depresiasi_awal' => 'required|numeric',
                 'id_lokasi' => 'required',
                 'id_departemen' => 'required',
-                'id_pic' => 'required',
                 'cost_centre' => 'required',
                 'kondisi' => 'required',
                 'id_supplier' => 'required',
@@ -292,6 +322,8 @@ class FixedAssetsController extends Controller
                 ], 401);
             }
 
+            $oldData = $fixedAsset->toArray();
+
             $groupId = $request->input('id_grup');
             $subGroupId = $request->input('id_sub_grup');
             $tglPerolehan = $request->input('tgl_perolehan');
@@ -315,43 +347,74 @@ class FixedAssetsController extends Controller
                 ], 401);
             }
 
-            $getPic = Http::withHeaders(['Authorization' => $this->token])->get($this->urlUser . $request->input('id_pic'));
-            $pic = $getPic->json()['data'] ?? [];
+            $groupChanged = $fixedAsset->subGroup->group->id !== $groupId;
+            $departmentChanged = $fixedAsset->id_departemen !== $departmentData['id'];
 
-            if (empty($pic)) {
-                return response()->json([
-                    'message' => 'User/PIC not found',
-                    'success' => true,
-                    'code' => 401
-                ], 401);
+            if ($groupChanged || $departmentChanged) {
+                $month = date('m', strtotime($tglPerolehan));
+                $year = date('Y', strtotime($tglPerolehan));
+                $attemptCount = 0;
+                $maxAttempts = 15;
+
+                $nomorAset = FixedAssets::whereHas('subGroup', function ($query) use ($groupId) {
+                    $query->where('id_grup', $groupId);
+                })
+                    ->where('id_departemen', $departmentData['id'])
+                    ->where('id', '!=', $fixedAsset->id)
+                    ->whereMonth('tgl_perolehan', $month)
+                    ->whereYear('tgl_perolehan', $year)
+                    ->count() + 1;
+
+                $numberOfLeadingZeros = max(0, 5 - strlen((string) $nomorAset));
+                $formattedNomorAset = $numberOfLeadingZeros > 0 ? str_repeat('0', $numberOfLeadingZeros) . $nomorAset : $nomorAset;
+
+                do {
+                    $existingAsset = FixedAssets::whereHas('subGroup', function ($query) use ($groupId) {
+                        $query->where('id_grup', $groupId);
+                    })
+                        ->where('id_departemen', $departmentData['id'])
+                        ->where('id', '!=', $fixedAsset->id)
+                        ->whereMonth('tgl_perolehan', $month)
+                        ->whereYear('tgl_perolehan', $year)
+                        ->where('nomor', $formattedNomorAset)
+                        ->first();
+
+                    if ($existingAsset) {
+                        $nomorAset = $nomorAset + 1;
+                        $formattedNomorAset = str_pad($nomorAset, 5, '0', STR_PAD_LEFT);
+
+                        $attemptCount++;
+                    } else {
+                        break;
+                    }
+                } while ($attemptCount < $maxAttempts);
+
+                if ($attemptCount === $maxAttempts) {
+                    DB::rollback();
+                    return response()->json([
+                        'message' => 'Could not find an available asset number after multiple attempts',
+                        'success' => false,
+                        'code' => 409
+                    ], 409);
+                }
+
+                $fixedAsset->update([
+                    'nomor' => $formattedNomorAset,
+                ]);
             }
 
-            $month = date('m', strtotime($tglPerolehan));
-            $year = date('Y', strtotime($tglPerolehan));
 
-            $nomorAset = FixedAssets::whereHas('subGroup', function ($query) use ($groupId) {
-                $query->where('id_grup', $groupId);
-            })
-                ->where('id_departemen', $departmentData['id'])
-                ->whereMonth('tgl_perolehan', $month)
-                ->whereYear('tgl_perolehan', $year)
-                ->count() + 1;
-
-            $numberOfLeadingZeros = max(0, 5 - strlen((string) $nomorAset));
-            $formattedNomorAset = $numberOfLeadingZeros > 0 ? str_repeat('0', $numberOfLeadingZeros) . $nomorAset : $nomorAset;
 
             $fixedAsset->update([
                 'id_sub_grup' => $subGroupId,
                 'nama' => $request->nama,
                 'brand' => $request->brand,
-                'nomor' => $formattedNomorAset,
                 'masa_manfaat' => $request->masa_manfaat,
                 'tgl_perolehan' => $tglPerolehan,
                 'nilai_perolehan' => $request->nilai_perolehan,
                 'nilai_depresiasi_awal' => $request->nilai_depresiasi_awal,
                 'id_lokasi' => $lokasi->id,
                 'id_departemen' => $departmentData['id'],
-                'id_pic' => $pic['id'],
                 'cost_centre' => $request->cost_centre,
                 'kondisi' => $request->kondisi,
                 'id_supplier' => $supplier->id,
@@ -360,6 +423,8 @@ class FixedAssetsController extends Controller
                 'keterangan' => $request->keterangan,
                 'status' => 1,
             ]);
+
+            LoggerService::logAction($this->userData, $fixedAsset, 'update', $oldData, $fixedAsset->toArray());
 
             DB::commit();
 
@@ -388,6 +453,8 @@ class FixedAssetsController extends Controller
 
             $data = FixedAssets::findOrFail($id);
 
+            $oldData = $data->toArray();
+
             $newStatusValue = ($data->status == 0) ? 1 : 0;
 
             $data->update([
@@ -395,6 +462,8 @@ class FixedAssetsController extends Controller
             ]);
 
             $message = ($newStatusValue == 0) ? 'Status updated to Non-Active.' : 'Status updated to Active.';
+            $logAction = ($newStatusValue == 0) ? 'deactivate' : 'activate';
+            LoggerService::logAction($this->userData, $data, $logAction, $oldData, $data->toArray(), $message);
 
             return response()->json([
                 'data' => $data,

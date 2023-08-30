@@ -8,6 +8,7 @@ use App\Models\FairValue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Services\LoggerService;
 
 class FairValueController extends Controller
 {
@@ -19,10 +20,18 @@ class FairValueController extends Controller
     {
         try {
             $fixedAsset = FixedAssets::findOrFail($asetId);
-            $fairValue = FairValue::where('id_fixed_asset', $asetId)->get();
+            $fairValues = FairValue::where('id_fixed_asset', $asetId)->get();
+
+            $fairValuesWithLogs = $fairValues->map(function ($fairValue) {
+
+                $fairValue->history = $this->formatLogs($fairValue->logs);
+                unset($fairValue->logs);
+
+                return $fairValue;
+            });
 
             return response()->json([
-                'data' => $fairValue,
+                'data' => $fairValuesWithLogs,
                 'message' => $this->messageAll,
                 'code' => 200
             ], 200);
@@ -58,6 +67,8 @@ class FairValueController extends Controller
                 'id_fixed_asset' => $asetId,
                 'nilai' => $request->nilai
             ]);
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -109,9 +120,13 @@ class FairValueController extends Controller
                 ], 404);
             }
 
+            $oldData = $fairValue->toArray();
+
             // Update the fair value
             $fairValue->nilai = $request->nilai;
             $fairValue->save();
+
+            LoggerService::logAction($this->userData, $fairValue, 'update', $oldData, $fairValue->toArray());
 
             DB::commit();
 
@@ -138,7 +153,6 @@ class FairValueController extends Controller
         DB::beginTransaction();
 
         try {
-            // Find the FairValue record by id and id_fixed_asset
             $fairValue = FairValue::where('id_fixed_asset', $asetId)
                 ->where('id', $id)
                 ->first();
@@ -151,7 +165,8 @@ class FairValueController extends Controller
                 ], 404);
             }
 
-            // Check if the current FairValue is the last one belonging to the FixedAsset
+            $oldData = $fairValue->toArray();
+
             $otherFairValuesCount = FairValue::where('id_fixed_asset', $asetId)
                 ->where('id', '<>', $id)
                 ->count();
@@ -164,8 +179,9 @@ class FairValueController extends Controller
                 ], 400);
             }
 
-            // Delete the fair value
             $fairValue->delete();
+
+            LoggerService::logAction($this->userData, $fairValue, 'delete', $oldData, null);
 
             DB::commit();
 

@@ -21,4 +21,8 @@ class ValueInUse extends Model
     {
         return $this->belongsTo(FixedAssets::class, 'id_fixed_asset');
     }
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'model');
+    }
 }

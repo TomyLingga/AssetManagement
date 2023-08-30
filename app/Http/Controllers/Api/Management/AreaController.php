@@ -8,6 +8,7 @@ use App\Models\Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Services\LoggerService;
 
 class AreaController extends Controller
 {
@@ -21,7 +22,7 @@ class AreaController extends Controller
     public function index()
     {
         try {
-            $areas = Area::with('locations')->orderBy('nama', 'asc')->get();
+            $areas = Area::with('locations','logs')->orderBy('nama', 'asc')->get();
 
             if ($areas->isEmpty()) {
 
@@ -54,7 +55,7 @@ class AreaController extends Controller
         try {
             $area = Area::with(['locations' => function ($query) {
                 $query->orderBy('nama', 'asc');
-            }])->find($id);
+            }, 'logs'])->find($id);
 
             if (!$area) {
 
@@ -64,6 +65,9 @@ class AreaController extends Controller
                     'code' => 401
                 ], 401);
             }
+
+            $area->history = $this->formatLogsForMultiple($area->logs);
+            unset($area->logs);
 
             return response()->json([
                 'data' => $area,
@@ -118,6 +122,8 @@ class AreaController extends Controller
             Location::insert($locations);
 
             $data->load('locations');
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -180,6 +186,7 @@ class AreaController extends Controller
                     'success' => false
                 ], 400);
             }
+            $oldData = $area->toArray();
 
             $area->update([
                 'nama' => $request->nama_area
@@ -216,6 +223,8 @@ class AreaController extends Controller
             Location::whereIn('id', $deletedLocationIds)->delete();
 
             $area->load('locations');
+
+            LoggerService::logAction($this->userData, $area, 'update', $oldData, $area->toArray());
 
             DB::commit();
 

@@ -24,4 +24,8 @@ class Supplier extends Model
     {
         return $this->hasMany(FixedAssets::class, 'id_supplier');
     }
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'model');
+    }
 }

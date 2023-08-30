@@ -8,6 +8,7 @@ use App\Models\ValueInUse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Services\LoggerService;
 
 class ValueInUseController extends Controller
 {
@@ -19,10 +20,17 @@ class ValueInUseController extends Controller
     {
         try {
             $fixedAsset = FixedAssets::findOrFail($asetId);
-            $valueInUse = ValueInUse::where('id_fixed_asset', $asetId)->get();
+            $valueInUses = ValueInUse::where('id_fixed_asset', $asetId)->get();
+
+            $valueInUsesWithLogs = $valueInUses->map(function ($valueInUse) {
+                $valueInUse->history = $this->formatLogs($valueInUse->logs);
+                unset($valueInUse->logs);
+
+                return $valueInUse;
+            });
 
             return response()->json([
-                'data' => $valueInUse,
+                'data' => $valueInUsesWithLogs,
                 'message' => $this->messageAll,
                 'code' => 200
             ], 200);
@@ -58,6 +66,8 @@ class ValueInUseController extends Controller
                 'id_fixed_asset' => $asetId,
                 'nilai' => $request->nilai
             ]);
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -109,9 +119,13 @@ class ValueInUseController extends Controller
                 ], 404);
             }
 
+            $oldData = $valueInUse->toArray();
+
             // Update the fair value
             $valueInUse->nilai = $request->nilai;
             $valueInUse->save();
+
+            LoggerService::logAction($this->userData, $valueInUse, 'update', $oldData, $valueInUse->toArray());
 
             DB::commit();
 
@@ -138,7 +152,6 @@ class ValueInUseController extends Controller
         DB::beginTransaction();
 
         try {
-            // Find the ValueInUse record by id and id_fixed_asset
             $valueInUse = ValueInUse::where('id_fixed_asset', $asetId)
                 ->where('id', $id)
                 ->first();
@@ -151,7 +164,8 @@ class ValueInUseController extends Controller
                 ], 404);
             }
 
-            // Check if the current ValueInUse is the last one belonging to the FixedAsset
+            $oldData = $valueInUse;
+
             $otherValueInUsesCount = ValueInUse::where('id_fixed_asset', $asetId)
                 ->where('id', '<>', $id)
                 ->count();
@@ -164,8 +178,9 @@ class ValueInUseController extends Controller
                 ], 400);
             }
 
-            // Delete the fair value
             $valueInUse->delete();
+
+            LoggerService::logAction($this->userData, $valueInUse, 'delete', $oldData, null);
 
             DB::commit();
 

@@ -7,9 +7,9 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
+use App\Services\LoggerService;
 
 class SupplierController extends Controller
 {
@@ -51,21 +51,21 @@ class SupplierController extends Controller
         try {
             $supplier = Supplier::findOrFail($id);
 
+            $supplier->history = $this->formatLogs($supplier->logs);
+            unset($supplier->logs);
+
             return response()->json([
                 'data' => $supplier,
                 'message' => $this->messageSuccess,
                 'code' => 200
             ], 200);
-        } catch (ModelNotFoundException $ex) {
-            return response()->json([
-                'message' => $this->messageMissing,
-                'code' => 401
-            ], 401);
-        } catch (QueryException $ex) {
+        } catch (QueryException $e) {
             return response()->json([
                 'message' => $this->messageFail,
-                'errMsg' => $ex->getMessage(),
-                'code' => 500
+                'err' => $e->getTrace()[0],
+                'errMsg' => $e->getMessage(),
+                'code' => 500,
+                'success' => false,
             ], 500);
         }
     }
@@ -90,6 +90,8 @@ class SupplierController extends Controller
             }
 
             $data = Supplier::create($request->all());
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -146,8 +148,11 @@ class SupplierController extends Controller
                 'kode' => $request->filled('kode') ? $request->kode : $supplier->kode,
                 'keterangan' => $request->filled('keterangan') ? $request->keterangan : $supplier->keterangan
             ];
+            $oldData = $supplier->toArray();
 
             $supplier->update($dataToUpdate);
+
+            LoggerService::logAction($this->userData, $supplier, 'update', $oldData, $supplier->toArray());
 
             DB::commit();
 

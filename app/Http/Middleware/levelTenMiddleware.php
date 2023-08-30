@@ -23,7 +23,6 @@ class levelTenMiddleware
 
         try {
             $decoded = JWT::decode($jwt, new Key(env('JWT_SECRET'), 'HS256'));
-
             $appId = '15';
             $urlAkses = "http://36.92.181.10:4763/api/akses/mine/{$appId}/{$decoded->sub}";
 
@@ -41,7 +40,7 @@ class levelTenMiddleware
                 return response()->json(['code' => 401, 'error' => 'Token has expired'], 401);
             }
 
-            $request->merge(['user_token' => $authorizationHeader]);
+            $request->merge(['user_token' => $authorizationHeader, 'decoded' => $decoded]);
 
             return $next($request);
         } catch (\Exception $e) {

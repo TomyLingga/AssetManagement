@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use App\Rules\UniqueValues;
 use Illuminate\Validation\Rule;
+use App\Services\LoggerService;
 
 class GroupController extends Controller
 {
@@ -56,21 +57,30 @@ class GroupController extends Controller
                 $query->orderBy('kode_aktiva_tetap', 'asc');
             }])->find($id);
 
+            if (!$group) {
+
+                return response()->json([
+                    'message' => $this->messageMissing,
+                    'success' => true,
+                    'code' => 401
+                ], 401);
+            }
+
+            $group->history = $this->formatLogsForMultiple($group->logs);
+            unset($group->logs);
+
             return response()->json([
                 'data' => $group,
                 'message' => $this->messageSuccess,
                 'code' => 200
             ], 200);
-        } catch (ModelNotFoundException $ex) {
-            return response()->json([
-                'message' => $this->messageMissing,
-                'code' => 401
-            ], 401);
-        } catch (QueryException $ex) {
+        } catch (\Illuminate\Database\QueryException $ex) {
             return response()->json([
                 'message' => $this->messageFail,
+                'err' => $ex->getTrace()[0],
                 'errMsg' => $ex->getMessage(),
-                'code' => 500
+                'success' => false,
+                'code' => 500,
             ], 500);
         }
     }
@@ -127,6 +137,8 @@ class GroupController extends Controller
             SubGroup::insert($subGroupData);
 
             $data->load('subGroups');
+
+            LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
             DB::commit();
 
@@ -202,6 +214,7 @@ class GroupController extends Controller
                     'success' => false
                 ], 400);
             }
+            $oldData = $group->toArray();
 
             $group->update([
                 'nama' => $request->nama_grup,
@@ -243,6 +256,8 @@ class GroupController extends Controller
             SubGroup::whereIn('id', $deletedSubGroupIds)->delete();
 
             $group->load('subGroups');
+
+            LoggerService::logAction($this->userData, $group, 'update', $oldData, $group->toArray());
 
             DB::commit();
 

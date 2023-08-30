@@ -25,4 +25,8 @@ class Group extends Model
     {
         return $this->hasMany(SubGroup::class, 'id_grup');
     }
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'model');
+    }
 }

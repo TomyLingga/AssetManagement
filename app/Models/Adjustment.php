@@ -25,4 +25,9 @@ class Adjustment extends Model
     {
         return $this->hasMany(FixedAssets::class, 'id_kode_adjustment');
     }
+
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'model');
+    }
 }
