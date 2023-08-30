@@ -44,7 +44,7 @@ class FixedAssetsController extends Controller
         ->select('fixed_assets.*')
         ->get();
 
-        if (!$fixedAssetsData ) {
+        if ($fixedAssetsData->isEmpty()) {
             return response()->json([
                 'message' => "Fixed Assets Not Found",
                 'success' => true,

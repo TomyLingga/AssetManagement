@@ -8,7 +8,6 @@ use App\Models\SubGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use App\Rules\UniqueValues;
 use Illuminate\Validation\Rule;
