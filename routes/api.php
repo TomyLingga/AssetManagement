@@ -36,7 +36,6 @@ Route::group(['middleware' => 'levelnine.checker'], function () {
     Route::post('fixed-asset/add', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'store']);
     Route::post('fixed-asset/get/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'show']);
     Route::post('fixed-asset/update/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'update']);
-    Route::get('fixed-asset/active/{id}', [App\Http\Controllers\Api\Aset\FixedAssetsController::class, 'toggleActive']);
 
     //Grup
     Route::post('group/add', [App\Http\Controllers\Api\Grup\GroupController::class, 'store']);
@@ -89,11 +88,22 @@ Route::group(['middleware' => 'leveleight.checker'], function () {
     Route::get('sub-group/group/{id}', [App\Http\Controllers\Api\Grup\SubGroupController::class, 'indexGrup']);
 
     //fixedAset
-    Route::post('dept-fixed-asset', [App\Http\Controllers\Api\Dept\FixedAssetsController::class, 'index']);
-    Route::post('dept-fixed-asset/get/{id}', [App\Http\Controllers\Api\Dept\FixedAssetsController::class, 'show']);
+    Route::get('dept-fixed-asset', [App\Http\Controllers\Api\Dept\FixedAssetsController::class, 'index']);
+    Route::get('dept-fixed-asset/get/{id}', [App\Http\Controllers\Api\Dept\FixedAssetsController::class, 'show']);
     Route::post('dept-fixed-asset/update/{id}', [App\Http\Controllers\Api\Dept\FixedAssetsController::class, 'update']);
     Route::get('fixed-asset/active/{id}', [App\Http\Controllers\Api\Dept\FixedAssetsController::class, 'toggleActive']);
+
 });
+
+Route::group(['middleware' => 'levelone.checker'], function () {
+    //bast
+    Route::get('bast-fixed-asset/index-pic', [App\Http\Controllers\Api\Dept\BastController::class, 'indexPic']);
+    Route::get('bast-fixed-asset/show-pic/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'showPic']);
+    Route::get('bast-fixed-asset/accept/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'approvePic']);
+    Route::get('bast-fixed-asset/check/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'approveChecker']);
+    Route::get('bast-fixed-asset/reject/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'reject']);
+});
+
 Route::fallback(function () {
-    return response()->json(['code' => 401, 'error' => 'Unauthorized'], 401);
+    return response()->json(['code' => 404, 'message' => 'URL not Found'], 404);
 });

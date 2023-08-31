@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api\Dept;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\FixedAssets;
 use App\Models\BastFixedAsset;
+use App\Models\FixedAssets;
 use App\Models\Location;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -13,17 +12,14 @@ use Illuminate\Support\Facades\Http;
 use App\Services\LoggerService;
 use Carbon\Carbon;
 
-class FixedAssetsController extends Controller
+class BastController extends Controller
 {
-    private function findOrFail($model, $conditions)
-    {
-        return $model::where($conditions)->firstOrFail();
-    }
-
-    public function index()
+    public function indexPic()
     {
         $tglNow = now()->toDateString();
-        $fixedAssetsData = FixedAssets::where('id_departemen', $this->userData->departemen)
+        $fixedAssetsData = FixedAssets::whereHas('bastFixedAssets', function ($query) {
+            $query->where('id_pic', $this->userData->sub);
+        })
         ->with([
             'subGroup.group',
             'location.area',
@@ -54,22 +50,17 @@ class FixedAssetsController extends Controller
 
         $fixedAssetsData->transform(function ($fixedAsset) use ($departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
             $departmentId = $fixedAsset->id_departemen;
-            $userId = $fixedAsset->id_pic;
 
             $matchingDept = $departmentIdMapping->get($departmentId);
-            $matchingUser = $userIdMapping->get($userId);
 
             if ($matchingDept) {
                 $departmentCode = $matchingDept['kode'];
                 $departmentName = $matchingDept['department'];
-                $userName = $matchingUser['name'];
-                $userJabatan = $matchingUser['jabatan'];
 
                 $tglPerolehan = Carbon::parse($fixedAsset->tgl_perolehan);
                 $tglPerolehanMonth = $tglPerolehan->format('m');
                 $tglPerolehanYear = $tglPerolehan->format('Y');
                 $groupFormat = $fixedAsset->subGroup->group->format;
-                $fixedAsset->nilai_perolehan = floatval($fixedAsset->nilai_perolehan);
 
                 $nomorAset = $fixedAsset->nomor;
 
@@ -78,11 +69,6 @@ class FixedAssetsController extends Controller
                 $fixedAsset->nomor = "{$departmentCode}_INL/{$monthInRoman}/{$tglPerolehanYear}/{$groupFormat}{$nomorAset}";
                 $fixedAsset->spesifikasi = json_decode($fixedAsset->spesifikasi);
                 $fixedAsset->assetDepartment = $departmentName;
-                $fixedAsset->assetUserName = $userName;
-                $fixedAsset->assetUserPosition = $userJabatan;
-
-                $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
-                $fixedAsset->assetAge = $assetAge;
             }
 
             return $fixedAsset;
@@ -95,14 +81,14 @@ class FixedAssetsController extends Controller
         ], 200);
     }
 
-    public function show($id)
+    public function showPic($id)
     {
         $tglNow = now()->toDateString();
         $fixedAsset = FixedAssets::where('id_departemen', $this->userData->departemen)
         ->with([
             'subGroup.group',
             'location.area',
-            'bastFixedAssets.logs'
+            'bastFixedAssets'
         ])->find($id);
 
         if (!$fixedAsset ) {
@@ -142,9 +128,6 @@ class FixedAssetsController extends Controller
             $bast->id_checker_name = $bastCheckerData['name'] ?? null;
             $bast->id_checker_jabatan = $bastCheckerData['jabatan'] ?? null;
             $bast->id_checker_signature = $bastCheckerData['signature'] ?? null;
-            $formattedBastLogs = $this->formatLogs($bast->logs);
-            $bast->history = $formattedBastLogs;
-            unset($bast->logs);
         }
 
         if (!isset($picData)) {
@@ -189,125 +172,117 @@ class FixedAssetsController extends Controller
         ], 200);
     }
 
-    public function update(Request $request, $id)
+    public function approvePic($id)
     {
-        DB::beginTransaction();
-
         try {
-            $validator = Validator::make($request->all(), [
-                'nama' => 'required',
-                'brand' => 'required',
-                'id_lokasi' => 'required',
-                'id_pic' => 'required',
-                'kondisi' => 'required',
-                'spesifikasi' => 'required|array',
-                'keterangan' => 'required'
+
+            $data = BastFixedAsset::findOrFail($id);
+
+            if($this->userData->sub != $data->id_pic)
+            {
+                return response()->json([
+                    'message' => 'User is not the PIC for this BAST',
+                    'success' => false,
+                    'code' => 500
+                ], 500);
+            }
+
+            $oldData = $data->toArray();
+
+            $data->update([
+                'ttd_terima' => now(),
             ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors(),
-                    'code' => 400,
-                    'success' => false
-                ], 400);
-            }
-
-            $fixedAsset = FixedAssets::with([
-                'subGroup.group',
-                'location.area',
-            ])->find($id);
-
-            if (!$fixedAsset ) {
-                return response()->json([
-                    'message' => "Fixed Asset Not Found",
-                    'success' => true,
-                    'code' => 401
-                ], 401);
-            }
-
-            $oldPicId = $fixedAsset->id_pic;
-            $oldData = $fixedAsset->toArray();
-
-            $spesifikasi = json_encode($request->spesifikasi);
-
-            $lokasi = $this->findOrFail(Location::class, ['id' => $request->input('id_lokasi')]);
-
-            $picId = $request->input('id_pic');
-            $deptId = $fixedAsset->id_departemen;
-            $picResponse = Http::withHeaders(['Authorization' => $this->token])->get($this->urlUser . $picId);
-            $deptResponse = Http::withHeaders(['Authorization' => $this->token])->get($this->urlDept . $deptId);
-            $picData = $picResponse->json()['data'] ?? [];
-            $deptData = $deptResponse->json()['data'] ?? [];
-            $deptCode = $deptData['kode'] ?? 'UNKNOWN';
-
-            $fixedAsset->update([
-                'nama' => $request->input('nama'),
-                'brand' => $request->input('brand'),
-                'id_lokasi' => $lokasi->id,
-                'id_pic' => $picData['id'],
-                'kondisi' => $request->input('kondisi'),
-                'spesifikasi' => $spesifikasi,
-                'keterangan' => $request->input('keterangan'),
-            ]);
-
-            LoggerService::logAction($this->userData, $fixedAsset, 'update', $oldData, $fixedAsset->toArray());
-
-            if ($fixedAsset->id_pic != $oldPicId) {
-                $validator = Validator::make($request->all(), [
-                    'tgl_serah' => 'required'
-                ]);
-
-                if ($validator->fails()) {
-                    return response()->json([
-                        'message' => $validator->errors(),
-                        'code' => 400,
-                        'success' => false
-                    ], 400);
-                }
-
-                $tglSerah = $request->input('tgl_serah');
-                $month = date('m', strtotime($tglSerah));
-                $year = date('Y', strtotime($tglSerah));
-
-                $count = BastFixedAsset::whereMonth('tgl_serah', $month)
-                                        ->whereYear('tgl_serah', $year)
-                                        ->count();
-
-                $formattedCount = str_pad($count + 1, 2, '0', STR_PAD_LEFT);
-                $nomorSerah = "INL/HO/VII-$formattedCount/$month/$year/$deptCode";
-
-                $bastNew =  BastFixedAsset::create([
-                                'id_fixed_asset' => $fixedAsset->id,
-                                'tgl_serah' => $request->input('tgl_serah'),
-                                'nomor_serah' => $nomorSerah,
-                                'id_user' => $this->userData->sub,
-                                'id_pic' => $fixedAsset->id_pic,
-                                'id_checker' => null,
-                                'ttd_terima' => null,
-                                'ttd_checker' => null,
-                                'status' => '1',
-                            ]);
-
-                LoggerService::logAction($this->userData, $bastNew, 'create', null, $bastNew->toArray());
-            }
-
-            DB::commit();
+            LoggerService::logAction($this->userData, $data, "Accept", $oldData, $data->toArray(), $data);
 
             return response()->json([
-                'data' => $fixedAsset,
-                'message' => 'Asset Updated Successfully',
+                'data' => $data,
+                'message' => "Approved",
                 'code' => 200,
-                'success' => true,
+                'success' => true
             ], 200);
-
         } catch (\Exception $e) {
-            DB::rollback();
+
             return response()->json([
-                'message' => 'Something went wrong',
+                'message' => "Something went wrong",
                 'err' => $e->getTrace()[0],
                 'errMsg' => $e->getMessage(),
                 'code' => 500,
-                'success' => false,
+                'success' => false
+            ], 500);
+        }
+    }
+
+    public function approveChecker($id)
+    {
+        try {
+
+            $data = BastFixedAsset::findOrFail($id);
+
+            if($data->ttd_terima == null)
+            {
+                return response()->json([
+                    'message' => 'PIC not yet accepted/approved this BAST',
+                    'success' => false,
+                    'code' => 500
+                ], 500);
+            }
+
+            $oldData = $data->toArray();
+
+            $data->update([
+                'ttd_checker' => now(),
+                'id_checker' => $this->userData->sub,
+            ]);
+
+            LoggerService::logAction($this->userData, $data, "Check", $oldData, $data->toArray(), $data);
+
+            return response()->json([
+                'data' => $data,
+                'message' => "Checked",
+                'code' => 200,
+                'success' => true
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'message' => "Something went wrong",
+                'err' => $e->getTrace()[0],
+                'errMsg' => $e->getMessage(),
+                'code' => 500,
+                'success' => false
+            ], 500);
+        }
+    }
+
+    public function reject($id)
+    {
+        try {
+
+            $data = BastFixedAsset::findOrFail($id);
+
+            $oldData = $data->toArray();
+
+            $data->update([
+                'status' => '0',
+            ]);
+
+            LoggerService::logAction($this->userData, $data, "Reject", $oldData, $data->toArray(), $data);
+
+            return response()->json([
+                'data' => $data,
+                'message' => "Rejected",
+                'code' => 200,
+                'success' => true
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'message' => "Something went wrong",
+                'err' => $e->getTrace()[0],
+                'errMsg' => $e->getMessage(),
+                'code' => 500,
+                'success' => false
             ], 500);
         }
     }

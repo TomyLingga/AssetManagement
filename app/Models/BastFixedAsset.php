@@ -18,12 +18,19 @@ class BastFixedAsset extends Model
         'nomor_serah',
         'id_user',
         'id_pic',
+        'id_checker',
         'ttd_terima',
         'ttd_checker',
+        'status',
     ];
 
     public function fixedAsset()
     {
         return $this->belongsTo(FixedAssets::class, 'id_fixed_asset');
+    }
+
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'model');
     }
 }

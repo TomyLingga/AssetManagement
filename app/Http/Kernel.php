@@ -66,5 +66,6 @@ class Kernel extends HttpKernel
         'levelten.checker' => \App\Http\Middleware\levelTenMiddleware::class,
         'levelnine.checker' => \App\Http\Middleware\levelNineMiddleware::class,
         'leveleight.checker' => \App\Http\Middleware\levelEightMiddleware::class,
+        'levelone.checker' => \App\Http\Middleware\levelOneMiddleware::class,
     ];
 }

@@ -86,8 +86,14 @@ class FixedAssets extends Model
     {
         return $this->hasMany(ValueInUse::class, 'id_fixed_asset');
     }
+
     public function logs()
     {
         return $this->morphMany(Log::class, 'model');
+    }
+
+    public function bastFixedAssets()
+    {
+        return $this->hasMany(BastFixedAsset::class, 'id_fixed_asset');
     }
 }

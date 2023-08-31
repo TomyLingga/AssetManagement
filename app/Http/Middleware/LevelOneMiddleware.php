@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
-class levelEightMiddleware
+class levelOneMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
@@ -32,7 +32,9 @@ class levelEightMiddleware
 
             $akses = $getakses->json();
 
-            if (!isset($akses['data']) || $akses['data']['level_akses'] < 8) {
+            // dd($akses);
+
+            if (!isset($akses['data']) || $akses['data']['level_akses'] < 1) {
                 return response()->json(['code' => 401, 'error' => 'Don`t have access for this feature'], 401);
             }
 
