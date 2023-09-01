@@ -120,11 +120,13 @@ class AssetCorrectionJournalController extends Controller
             if ($bookValue > $latestValueInUseNilai) {
                 $debet = $fixedAsset->adjustment->kode_loss;
                 $kredit = $fixedAsset->formated_kode_aktiva;
+                $info = 'Loss Impairment';
             } elseif ($bookValue < $latestValueInUseNilai) {
                 $debet = $fixedAsset->formated_kode_aktiva;
                 $kredit = $fixedAsset->adjustment->kode_margin;
+                $info = 'Margin';
             } else {
-                $debet = $kredit = 'Equal';
+                $debet = $kredit = $info = 'Equal';
             }
 
             return [
@@ -140,6 +142,7 @@ class AssetCorrectionJournalController extends Controller
                 'comparison_result' => $isGreater,
                 'debet' => $debet,
                 'kredit' => $kredit,
+                'info' => $info
             ];
         });
 

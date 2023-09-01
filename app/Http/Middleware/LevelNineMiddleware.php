@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
-class levelNineMiddleware
+class LevelNineMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
