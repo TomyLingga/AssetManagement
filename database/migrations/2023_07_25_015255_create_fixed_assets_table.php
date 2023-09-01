@@ -23,8 +23,8 @@ class CreateFixedAssetsTable extends Migration
             $table->string('nomor');
             $table->string('masa_manfaat');
             $table->date('tgl_perolehan');
-            $table->decimal('nilai_perolehan', 30, 2)->change();
-            $table->decimal('nilai_depresiasi_awal', 30, 2)->change();
+            $table->decimal('nilai_perolehan', 30, 2);
+            $table->decimal('nilai_depresiasi_awal', 30, 2);
             $table->foreignId('id_lokasi')->constrained('locations')->nullable();
             $table->string('id_departemen');
             $table->string('id_pic');
