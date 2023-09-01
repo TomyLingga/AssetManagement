@@ -16,7 +16,7 @@ class CreateValueInuseTable extends Migration
         Schema::create('value_in_uses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_fixed_asset')->constrained('fixed_assets');
-            $table->decimal('nilai', 30, 2)->change();
+            $table->decimal('nilai', 30, 2);
             $table->timestamps();
         });
     }
