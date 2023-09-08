@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\LoggerService;
+use App\Models\BastFixedAsset;
+
 
 class FixedAssetsController extends Controller
 {
@@ -112,11 +114,10 @@ class FixedAssetsController extends Controller
                 'cost_centre' => 'required',
                 'kondisi' => 'required',
                 'id_supplier' => 'required',
-                'id_kode_adjustment' => 'required',
+                'id_mis' => 'required',
+                // 'id_kode_adjustment' => 'required',
                 'spesifikasi' => 'required|array',
                 'keterangan' => 'required',
-                'fairValue' => 'required|numeric',
-                'valueInUse' => 'required|numeric',
             ]);
 
             if ($validator->fails()) {
@@ -136,7 +137,7 @@ class FixedAssetsController extends Controller
             $subGroup = $this->findOrFail(SubGroup::class, ['id' => $subGroupId, 'id_grup' => $groupId]);
             $lokasi = $this->findOrFail(Location::class, ['id' => $request->input('id_lokasi')]);
             $supplier = $this->findOrFail(Supplier::class, ['id' => $request->input('id_supplier')]);
-            $adjustment = $this->findOrFail(Adjustment::class, ['id' => $request->input('id_kode_adjustment')]);
+            // $adjustment = $this->findOrFail(Adjustment::class, ['id' => $request->input('id_kode_adjustment')]);
 
             $departmentId = $request->input('id_departemen');
 
@@ -216,7 +217,7 @@ class FixedAssetsController extends Controller
                 ], 409);
             }
 
-            $data = FixedAssets::create([
+            $data = [
                 'id_sub_grup' => $subGroupId,
                 'nama' => $request->nama,
                 'brand' => $request->brand,
@@ -233,21 +234,31 @@ class FixedAssetsController extends Controller
                 'cost_centre' => $request->cost_centre,
                 'kondisi' => $request->kondisi,
                 'id_supplier' => $supplier->id,
-                'id_kode_adjustment' => $adjustment->id,
+                'id_mis' => $request->id_mis,
                 'spesifikasi' => $spesifikasi,
                 'keterangan' => $request->keterangan,
                 'status' => 1,
-            ]);
+            ];
 
-            $fairValue = FairValue::create([
-                'id_fixed_asset' => $data->id,
-                'nilai' => $request->fairValue,
-            ]);
+            if ($request->has('id_kode_adjustment')) {
+                $data['id_kode_adjustment'] = $request->id_kode_adjustment;
+            }
 
-            $valueInUse = ValueInUse::create([
-                'id_fixed_asset' => $data->id,
-                'nilai' => $request->valueInUse,
-            ]);
+            $data = FixedAssets::create($data);
+
+            if ($request->has('fairValue')) {
+                $fairValue = FairValue::create([
+                    'id_fixed_asset' => $data->id,
+                    'nilai' => $request->fairValue,
+                ]);
+            }
+
+            if ($request->has('valueInUse')) {
+                $valueInUse = ValueInUse::create([
+                    'id_fixed_asset' => $data->id,
+                    'nilai' => $request->valueInUse,
+                ]);
+            }
 
             $data->load('subGroup', 'location', 'supplier', 'adjustment', 'fairValues', 'valueInUses');
 
@@ -289,10 +300,12 @@ class FixedAssetsController extends Controller
                 'nilai_depresiasi_awal' => 'required|numeric',
                 'id_lokasi' => 'required',
                 'id_departemen' => 'required',
+                'id_pic' => 'required',
                 'cost_centre' => 'required',
                 'kondisi' => 'required',
                 'id_supplier' => 'required',
-                'id_kode_adjustment' => 'required',
+                'id_mis' => 'required',
+                // 'id_kode_adjustment' => 'required',
                 'spesifikasi' => 'required|array',
                 'keterangan' => 'required'
             ]);
@@ -322,6 +335,7 @@ class FixedAssetsController extends Controller
                 ], 401);
             }
 
+            $oldPicId = $fixedAsset->id_pic;
             $oldData = $fixedAsset->toArray();
 
             $groupId = $request->input('id_grup');
@@ -338,14 +352,7 @@ class FixedAssetsController extends Controller
             $departmentId = $request->input('id_departemen');
             $deptResponse = Http::withHeaders(['Authorization' => $this->token])->get($this->urlDept . $departmentId);
             $departmentData = $deptResponse->json()['data'] ?? [];
-
-            if (empty($departmentData)) {
-                return response()->json([
-                    'message' => 'Department not found',
-                    'success' => true,
-                    'code' => 401
-                ], 401);
-            }
+            $deptCode = $departmentData['kode'] ?? 'UNKNOWN';
 
             $groupChanged = $fixedAsset->subGroup->group->id !== $groupId;
             $departmentChanged = $fixedAsset->id_departemen !== $departmentData['id'];
@@ -405,7 +412,7 @@ class FixedAssetsController extends Controller
 
 
 
-            $fixedAsset->update([
+            $data = [
                 'id_sub_grup' => $subGroupId,
                 'nama' => $request->nama,
                 'brand' => $request->brand,
@@ -418,13 +425,58 @@ class FixedAssetsController extends Controller
                 'cost_centre' => $request->cost_centre,
                 'kondisi' => $request->kondisi,
                 'id_supplier' => $supplier->id,
-                'id_kode_adjustment' => $adjustment->id,
+                'id_mis' => $request->id_mis,
                 'spesifikasi' => $spesifikasi,
                 'keterangan' => $request->keterangan,
                 'status' => 1,
-            ]);
+            ];
+
+            if ($request->has('id_kode_adjustment')) {
+                $data['id_kode_adjustment'] = $request->input('id_kode_adjustment');
+            }
+
+            $fixedAsset->update($data);
 
             LoggerService::logAction($this->userData, $fixedAsset, 'update', $oldData, $fixedAsset->toArray());
+
+            if ($fixedAsset->id_pic != $oldPicId) {
+                $validator = Validator::make($request->all(), [
+                    'tgl_serah' => 'required'
+                ]);
+
+                if ($validator->fails()) {
+                    return response()->json([
+                        'message' => $validator->errors(),
+                        'code' => 400,
+                        'success' => false
+                    ], 400);
+                }
+
+                $tglSerah = $request->input('tgl_serah');
+                $month = date('m', strtotime($tglSerah));
+                $year = date('Y', strtotime($tglSerah));
+
+                $count = BastFixedAsset::whereMonth('tgl_serah', $month)
+                                        ->whereYear('tgl_serah', $year)
+                                        ->count();
+
+                $formattedCount = str_pad($count + 1, 2, '0', STR_PAD_LEFT);
+                $nomorSerah = "INL/HO/VII-$formattedCount/$month/$year/$deptCode";
+
+                $bastNew =  BastFixedAsset::create([
+                                'id_fixed_asset' => $fixedAsset->id,
+                                'tgl_serah' => $request->input('tgl_serah'),
+                                'nomor_serah' => $nomorSerah,
+                                'id_user' => $this->userData->sub,
+                                'id_pic' => $fixedAsset->id_pic,
+                                'id_checker' => null,
+                                'ttd_terima' => null,
+                                'ttd_checker' => null,
+                                'status' => '1',
+                            ]);
+
+                LoggerService::logAction($this->userData, $bastNew, 'create', null, $bastNew->toArray());
+            }
 
             DB::commit();
 

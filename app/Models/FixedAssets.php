@@ -30,6 +30,7 @@ class FixedAssets extends Model
         'kondisi',
         'id_supplier',
         'id_kode_adjustment',
+        'id_mis',
         'spesifikasi',
         'keterangan',
         'status',

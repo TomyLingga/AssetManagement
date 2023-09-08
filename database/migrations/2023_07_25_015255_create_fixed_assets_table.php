@@ -30,8 +30,9 @@ class CreateFixedAssetsTable extends Migration
             $table->string('id_pic');
             $table->string('cost_centre');
             $table->string('kondisi');
-            $table->foreignId('id_supplier')->constrained('suppliers');
-            $table->foreignId('id_kode_adjustment')->constrained('adjustments');
+            $table->string('id_supplier')->nullable();
+            $table->foreignId('id_kode_adjustment')->constrained('adjustments')->nullable();
+            $table->string('id_mis')->nullable();
             $table->jsonb('spesifikasi');
             $table->string('keterangan');
             $table->integer('status');

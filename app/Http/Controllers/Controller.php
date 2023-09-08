@@ -66,16 +66,36 @@ class Controller extends BaseController
             $month = $tglPerolehan->month;
 
             if (!isset($initialBalances[$year])) {
-                $initialBalanceThisYear = ($year < 2023) ? $initialDepreciationValue : ($currentYearTotal + $initialDepreciationValue);
+                $initialBalanceThisYear = ($year < 2023) ? 0 : ($currentYearTotal + $initialDepreciationValue);
+                if ($year < 2023) {
+                    if ($year == 2022) {
+                        $totalThisYear = $initialDepreciationValue;
+                        $totalAccumulationUntilThisYear = $initialDepreciationValue;
+                    }else{
+                        $totalThisYear = 0.0;
+                        $totalAccumulationUntilThisYear = 0.0;
+                    }
+                }else{
+                    $totalThisYear = 0.0;
+                    $totalAccumulationUntilThisYear = 0.0;
+                }
                 $initialBalances[$year] = [
                     'initialBalanceThisYear' => $initialBalanceThisYear,
-                    'totalThisYear' => ($year < 2023) ? $initialDepreciationValue : 0.0,
-                    'totalAccumulationUntilThisYear' => ($year < 2023) ? $initialDepreciationValue : 0.0,
+                    'totalThisYear' => $totalThisYear,
+                    'totalAccumulationUntilThisYear' => $totalAccumulationUntilThisYear,
                     'monthlyDepreciation' => []
                 ];
             }
 
-            $initialBalances[$year]['monthlyDepreciation'][$month] = $monthlyDepreciation;
+            if ($year < 2023) {
+                if ($year == 2022 && $month == 12) {
+                    $initialBalances[$year]['monthlyDepreciation'][$month] = $initialDepreciationValue;
+                }else{
+                    $initialBalances[$year]['monthlyDepreciation'][$month] = 0.0;
+                }
+            }else{
+                $initialBalances[$year]['monthlyDepreciation'][$month] = $monthlyDepreciation;
+            }
 
             if ($year > 2023) {
                 $currentYearTotal += $monthlyDepreciation;

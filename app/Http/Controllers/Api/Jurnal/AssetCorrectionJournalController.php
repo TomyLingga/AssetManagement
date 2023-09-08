@@ -114,16 +114,24 @@ class AssetCorrectionJournalController extends Controller
             $difference = $bookValue - $latestValueInUseNilai;
             $isGreater = $difference > 0 ? 'Book Value is greater' : ($difference < 0 ? 'Value in Use is greater' : 'Book Value and Value in Use are equal');
 
+            if ($fixedAsset->adjustment === null) {
+                $kodeLoss = "Asset didnt have Adjustment Code";
+                $kodeMargin = "Asset didnt have Adjustment Code";
+            }else{
+                $kodeLoss = $fixedAsset->adjustment->kode_loss;
+                $kodeMargin = $fixedAsset->adjustment->kode_margin;
+            }
+
             $debet = '';
             $kredit = '';
 
             if ($bookValue > $latestValueInUseNilai) {
-                $debet = $fixedAsset->adjustment->kode_loss;
+                $debet = $kodeLoss;
                 $kredit = $fixedAsset->formated_kode_aktiva;
                 $info = 'Loss Impairment';
             } elseif ($bookValue < $latestValueInUseNilai) {
                 $debet = $fixedAsset->formated_kode_aktiva;
-                $kredit = $fixedAsset->adjustment->kode_margin;
+                $kredit = $kodeMargin;
                 $info = 'Margin';
             } else {
                 $debet = $kredit = $info = 'Equal';
