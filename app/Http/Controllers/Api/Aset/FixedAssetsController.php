@@ -7,7 +7,6 @@ use App\Models\FixedAssets;
 use App\Models\SubGroup;
 use App\Models\Group;
 use App\Models\Location;
-use App\Models\Supplier;
 use App\Models\Adjustment;
 use App\Models\FairValue;
 use App\Models\ValueInUse;
@@ -33,7 +32,6 @@ class FixedAssetsController extends Controller
         $fixedAssetsData = FixedAssets::with([
             'subGroup.group',
             'location.area',
-            'supplier',
             'adjustment',
             'fairValues',
             'valueInUses',
@@ -70,7 +68,6 @@ class FixedAssetsController extends Controller
         $fixedAssetData = FixedAssets::with([
             'subGroup.group',
             'location.area',
-            'supplier',
             'adjustment',
             'fairValues',
             'valueInUses',
@@ -136,7 +133,7 @@ class FixedAssetsController extends Controller
             $group = $this->findOrFail(Group::class, ['id' => $groupId]);
             $subGroup = $this->findOrFail(SubGroup::class, ['id' => $subGroupId, 'id_grup' => $groupId]);
             $lokasi = $this->findOrFail(Location::class, ['id' => $request->input('id_lokasi')]);
-            $supplier = $this->findOrFail(Supplier::class, ['id' => $request->input('id_supplier')]);
+            // $supplier = $this->findOrFail(Supplier::class, ['id' => $request->input('id_supplier')]);
             // $adjustment = $this->findOrFail(Adjustment::class, ['id' => $request->input('id_kode_adjustment')]);
 
             $departmentId = $request->input('id_departemen');
@@ -233,7 +230,7 @@ class FixedAssetsController extends Controller
                 'id_pic' => $pic['id'],
                 'cost_centre' => $request->cost_centre,
                 'kondisi' => $request->kondisi,
-                'id_supplier' => $supplier->id,
+                'id_supplier' => $request->id_supplier,
                 'id_mis' => $request->id_mis,
                 'spesifikasi' => $spesifikasi,
                 'keterangan' => $request->keterangan,
@@ -260,7 +257,7 @@ class FixedAssetsController extends Controller
                 ]);
             }
 
-            $data->load('subGroup', 'location', 'supplier', 'adjustment', 'fairValues', 'valueInUses');
+            $data->load('subGroup', 'location', 'adjustment', 'fairValues', 'valueInUses');
 
             LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
@@ -321,7 +318,6 @@ class FixedAssetsController extends Controller
             $fixedAsset = FixedAssets::with([
                 'subGroup.group',
                 'location.area',
-                'supplier',
                 'adjustment',
                 'fairValues',
                 'valueInUses',
@@ -346,7 +342,7 @@ class FixedAssetsController extends Controller
             $group = $this->findOrFail(Group::class, ['id' => $groupId]);
             $subGroup = $this->findOrFail(SubGroup::class, ['id' => $subGroupId, 'id_grup' => $groupId]);
             $lokasi = $this->findOrFail(Location::class, ['id' => $request->input('id_lokasi')]);
-            $supplier = $this->findOrFail(Supplier::class, ['id' => $request->input('id_supplier')]);
+            // $supplier = $this->findOrFail(Supplier::class, ['id' => $request->input('id_supplier')]);
             $adjustment = $this->findOrFail(Adjustment::class, ['id' => $request->input('id_kode_adjustment')]);
 
             $departmentId = $request->input('id_departemen');
@@ -410,8 +406,6 @@ class FixedAssetsController extends Controller
                 ]);
             }
 
-
-
             $data = [
                 'id_sub_grup' => $subGroupId,
                 'nama' => $request->nama,
@@ -424,7 +418,7 @@ class FixedAssetsController extends Controller
                 'id_departemen' => $departmentData['id'],
                 'cost_centre' => $request->cost_centre,
                 'kondisi' => $request->kondisi,
-                'id_supplier' => $supplier->id,
+                'id_supplier' => $request->id_supplier,
                 'id_mis' => $request->id_mis,
                 'spesifikasi' => $spesifikasi,
                 'keterangan' => $request->keterangan,

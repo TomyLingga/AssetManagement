@@ -12,7 +12,6 @@ class AssetDepreciationJournalController extends Controller
     {
         $fixedAssetsData = FixedAssets::with([
             'subGroup.group',
-            'supplier',
         ])
         ->join('sub_groups', 'fixed_assets.id_sub_grup', '=', 'sub_groups.id')
         ->join('groups', 'sub_groups.id_grup', '=', 'groups.id')

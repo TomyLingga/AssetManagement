@@ -11,7 +11,6 @@ class AssetRecognitionJournalController extends Controller
     {
         $fixedAssetsData = FixedAssets::with([
             'subGroup.group',
-            'supplier',
         ])
         ->join('sub_groups', 'fixed_assets.id_sub_grup', '=', 'sub_groups.id')
         ->join('groups', 'sub_groups.id_grup', '=', 'groups.id')
@@ -30,10 +29,15 @@ class AssetRecognitionJournalController extends Controller
             ], 401);
         }
 
-        $fixedAssetsData->transform(function ($fixedAsset){
+        $getSupplierName = function ($supplierId) {
+            $supplierData = $this->getSupplier($supplierId); // Use appropriate method here
+            return $supplierData['name'] ?? '';
+        };
+
+        $fixedAssetsData->transform(function ($fixedAsset) use ($getSupplierName) {
             return [
                 'debet' => $fixedAsset->nama,
-                'kredit' => $fixedAsset->supplier->nama,
+                'kredit' => $getSupplierName($fixedAsset->id_supplier),
                 'grup' => $fixedAsset->subGroup->group->nama,
                 'sub_grup' => $fixedAsset->subGroup->nama,
                 'tgl_perolehan' => $fixedAsset->tgl_perolehan,
@@ -41,7 +45,6 @@ class AssetRecognitionJournalController extends Controller
                 'masa_manfaat' => $fixedAsset->masa_manfaat,
                 'formated_kode_aktiva' => $fixedAsset->formated_kode_aktiva,
                 'formated_kode_penyusutan' => $fixedAsset->formated_kode_penyusutan,
-                'supplier_code' => $fixedAsset->supplier->kode,
             ];
         });
 

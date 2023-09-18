@@ -14,7 +14,6 @@ class FixedAssetExportController extends Controller
         $fixedAssetsData = FixedAssets::with([
             'subGroup.group',
             'location.area',
-            'supplier',
             'fairValues',
             'valueInUses',
         ])
