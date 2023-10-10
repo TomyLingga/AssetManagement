@@ -138,6 +138,8 @@ class FixedAssetsController extends Controller
 
             $departmentId = $request->input('id_departemen');
 
+            // sleep(3);
+
             $deptResponse = Http::withHeaders([
                 'Authorization' => $this->token,
             ])->get($this->urlDept . $departmentId);
@@ -151,6 +153,8 @@ class FixedAssetsController extends Controller
                     'code' => 401
                 ], 401);
             }
+
+            // sleep(3);
 
             $getPic = Http::withHeaders([
                 'Authorization' => $this->token,
