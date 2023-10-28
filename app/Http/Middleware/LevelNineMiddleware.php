@@ -24,7 +24,7 @@ class LevelNineMiddleware
         try {
             $decoded = JWT::decode($jwt, new Key(env('JWT_SECRET'), 'HS256'));
             $appId = '15';
-            $urlAkses = "http://36.92.181.10:4763/api/akses/mine/{$appId}";
+            $urlAkses = env('BASE_URL_PORTAL')."akses/mine/{$appId}";
 
             $getakses = Http::withHeaders([
                 'Authorization' => $authorizationHeader,
