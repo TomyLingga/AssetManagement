@@ -15,22 +15,29 @@ class Controller extends BaseController
 
     public $token;
     public $userData;
-    public $urlDept = "http://36.92.181.10:4763/api/department/get/";
-    public $urlAllDept = "http://36.92.181.10:4763/api/department";
-    public $urlUser = "http://36.92.181.10:4763/api/user/get/";
-    public $urlAllUser = "http://36.92.181.10:4763/api/user";
-
-    public $urlAllSuppliers = "http://192.168.0.173:8082/api/supplier/index";
-    public $urlSupplier = "http://192.168.0.173:8082/api/supplier/get/";
-
-    public $urlAllMIS = "http://192.168.0.173:8082/api/mis/index";
-    public $urlMIS = "http://192.168.0.173:8082/api/mis/get/";
+    public $urlDept;
+    public $urlAllDept;
+    public $urlUser;
+    public $urlAllUser;
+    public $urlAllSuppliers;
+    public $urlSupplier;
+    public $urlAllMIS;
+    public $urlMIS;
 
     public function __construct()
     {
         $this->middleware(function ($request, $next) {
-            $this->token = $request->get('user_token');
-            $this->userData = $request->get('decoded');
+            $this->token = env('BASE_URL_PORTAL')."department/get/";
+            $this->userData = env('BASE_URL_PORTAL')."user/get/";
+            $this->urlDept = env('BASE_URL_PORTAL')."department/get/";
+            $this->urlAllDept = env('BASE_URL_PORTAL')."department";
+            $this->urlUser = env('BASE_URL_PORTAL')."user/get/";
+            $this->urlAllUser = env('BASE_URL_PORTAL')."user";
+
+            $this->$urlAllSuppliers = env('BASE_URL_ODOO')."supplier/index";
+            $this->$urlSupplier = env('BASE_URL_ODOO')."supplier/get/";
+            $this->$urlAllMIS = env('BASE_URL_ODOO')."mis/index";
+            $this->$urlMIS = env('BASE_URL_ODOO')."mis/get/";
             return $next($request);
         });
     }
