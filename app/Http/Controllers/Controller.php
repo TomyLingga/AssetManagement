@@ -33,11 +33,10 @@ class Controller extends BaseController
             $this->urlAllDept = env('BASE_URL_PORTAL')."department";
             $this->urlUser = env('BASE_URL_PORTAL')."user/get/";
             $this->urlAllUser = env('BASE_URL_PORTAL')."user";
-
-            $this->$urlAllSuppliers = env('BASE_URL_ODOO')."supplier/index";
-            $this->$urlSupplier = env('BASE_URL_ODOO')."supplier/get/";
-            $this->$urlAllMIS = env('BASE_URL_ODOO')."mis/index";
-            $this->$urlMIS = env('BASE_URL_ODOO')."mis/get/";
+            $this->urlAllSuppliers = env('BASE_URL_ODOO')."supplier/index";
+            $this->urlSupplier = env('BASE_URL_ODOO')."supplier/get/";
+            $this->urlAllMIS = env('BASE_URL_ODOO')."mis/index";
+            $this->urlMIS = env('BASE_URL_ODOO')."mis/get/";
             return $next($request);
         });
     }
