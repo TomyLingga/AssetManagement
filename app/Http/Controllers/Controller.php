@@ -27,8 +27,8 @@ class Controller extends BaseController
     public function __construct()
     {
         $this->middleware(function ($request, $next) {
-            $this->token = env('BASE_URL_PORTAL')."department/get/";
-            $this->userData = env('BASE_URL_PORTAL')."user/get/";
+            $this->token = $request->get('user_token');
+            $this->userData = $request->get('decoded');
             $this->urlDept = env('BASE_URL_PORTAL')."department/get/";
             $this->urlAllDept = env('BASE_URL_PORTAL')."department";
             $this->urlUser = env('BASE_URL_PORTAL')."user/get/";
@@ -218,8 +218,7 @@ class Controller extends BaseController
         $userId = $fixedAsset->id_pic;
 
         $deptData = $this->getDepartmentById($departmentId);
-
-        if (!isset($deptData)) {
+        if ($deptData == []) {
             return response()->json([
                 'message' => 'Department not found',
                 'success' => true,
@@ -229,7 +228,7 @@ class Controller extends BaseController
 
         $userData = $this->getUserById($userId);
 
-        if (!isset($userData)) {
+        if ($userData == []) {
             return response()->json([
                 'message' => 'User not found',
                 'success' => true,
@@ -242,7 +241,6 @@ class Controller extends BaseController
 
         $departmentData = $deptData;
         $userData = $userData;
-
         $departmentCode = $departmentData['kode'];
         $departmentName = $departmentData['department'];
         $userName = $userData['name'];
