@@ -10,6 +10,8 @@ class BastFixedAsset extends Model
 {
     use HasFactory, Notifiable;
 
+    protected $table = 'bast_fixed_assets';
+
     protected $primaryKey = 'id';
 
     protected $fillable = [
