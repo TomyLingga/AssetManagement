@@ -67,6 +67,7 @@ class FixedAssetsController extends Controller
         $tglNow = $request->input('tanggal') ?? now()->toDateString();
         $fixedAssetData = FixedAssets::with([
             'subGroup.group',
+            'fotoFixedAssets',
             'location.area',
             'adjustment',
             'fairValues',
@@ -82,6 +83,10 @@ class FixedAssetsController extends Controller
         }
 
         $fixedAsset = $this->formattingById($fixedAssetData, $tglNow);
+        $fixedAsset->fotoFixedAssets = $fixedAsset->fotoFixedAssets->map(function ($foto) {
+            $foto->nama_file = env('BACKEND_FOTO_ASET') . $foto->nama_file;
+            return $foto;
+        });
         unset($fixedAsset->logs);
         return response()->json([
             'data' => $fixedAsset,
@@ -261,7 +266,21 @@ class FixedAssetsController extends Controller
                 ]);
             }
 
-            $data->load('subGroup', 'location', 'adjustment', 'fairValues', 'valueInUses');
+            if ($request->hasFile('foto')) {
+                $photos = [];
+
+                foreach ($request->file('foto') as $file) {
+                    $originalName = $file->getClientOriginalName();
+                    $newName = time() . '_' . str_replace(' ', '_', $originalName);
+                    $file->move('storage/upload/foto/', $newName);
+
+                    $photos[] = ['nama_file' => $newName, 'id_fixed_asset' => $data->id];
+                }
+
+                $data->fotoFixedAssets()->createMany($photos);
+            }
+
+            $data->load('subGroup', 'fotoFixedAssets', 'location', 'adjustment', 'fairValues', 'valueInUses');
 
             LoggerService::logAction($this->userData, $data, 'create', null, $data->toArray());
 
@@ -321,6 +340,7 @@ class FixedAssetsController extends Controller
 
             $fixedAsset = FixedAssets::with([
                 'subGroup.group',
+                'fotoFixedAssets',
                 'location.area',
                 'adjustment',
                 'fairValues',
@@ -410,6 +430,24 @@ class FixedAssetsController extends Controller
                 ]);
             }
 
+            if ($request->hasFile('foto')) {
+                // Delete old photos
+                $fixedAsset->fotoFixedAssets()->delete();
+
+                // Add new photos
+                $photos = [];
+
+                foreach ($request->file('foto') as $file) {
+                    $originalName = $file->getClientOriginalName();
+                    $newName = time() . '_' . str_replace(' ', '_', $originalName);
+                    $file->move('storage/upload/foto/', $newName);
+
+                    $photos[] = ['nama_file' => $newName, 'id_fixed_asset' => $fixedAsset->id];
+                }
+
+                $fixedAsset->fotoFixedAssets()->createMany($photos);
+            }
+
             $data = [
                 'id_sub_grup' => $subGroupId,
                 'nama' => $request->nama,
@@ -475,6 +513,8 @@ class FixedAssetsController extends Controller
 
                 LoggerService::logAction($this->userData, $bastNew, 'create', null, $bastNew->toArray());
             }
+
+            $fixedAsset->load('fotoFixedAssets');
 
             DB::commit();
 

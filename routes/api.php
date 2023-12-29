@@ -102,6 +102,7 @@ Route::group(['middleware' => 'levelone.checker'], function () {
     Route::get('bast-fixed-asset/accept/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'approvePic']);
     Route::get('bast-fixed-asset/check/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'approveChecker']);
     Route::get('bast-fixed-asset/reject/{id}', [App\Http\Controllers\Api\Dept\BastController::class, 'reject']);
+    Route::get('bast-fixed-asset/print/{id}', [App\Http\Controllers\Api\Pdf\BastController::class, 'print']);
 });
 
 Route::fallback(function () {

@@ -97,4 +97,9 @@ class FixedAssets extends Model
     {
         return $this->hasMany(BastFixedAsset::class, 'id_fixed_asset');
     }
+
+    public function fotoFixedAssets()
+    {
+        return $this->hasMany(FotoFixedAsset::class, 'id_fixed_asset');
+    }
 }
