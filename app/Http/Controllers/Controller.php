@@ -55,20 +55,6 @@ class Controller extends BaseController
         ])->get($this->urlSupplier . $id)->json()['data'] ?? [];
     }
 
-    public function getAllMIS()
-    {
-        return Http::withHeaders([
-            'Authorization' => $this->token,
-        ])->get($this->urlAllMIS)->json()['data'] ?? [];
-    }
-
-    public function getMIS($id)
-    {
-        return Http::withHeaders([
-            'Authorization' => $this->token,
-        ])->get($this->urlMIS . $id)->json()['data'] ?? [];
-    }
-
     public function calculateAssetAge($tglPerolehan, $tglNow)
     {
         $currentDate = Carbon::parse($tglNow);
@@ -236,7 +222,7 @@ class Controller extends BaseController
             ], 401);
         }
 
-        $misData = $this->getMIS($misId);
+        // $misData = $this->getMIS($misId);
         $supplierData = $this->getSupplier($supplierId);
 
         $departmentData = $deptData;
@@ -257,7 +243,7 @@ class Controller extends BaseController
         $fixedAsset->assetDepartment = $departmentName;
         $fixedAsset->assetUserName = $userName;
         $fixedAsset->assetUserPosition = $userJabatan;
-        $fixedAsset->assetMIS = $misData;
+        $fixedAsset->assetMIS = $misId;
         $fixedAsset->assetSupplier = $supplierData;
 
         $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
@@ -289,23 +275,23 @@ class Controller extends BaseController
     public function formatting($fixedAssets, $tglNow){
         $deptData = $this->getDepartmentData();
         $supplierData = $this->getAllSuppliers();
-        $misData = $this->getAllMIS();
+        // $misData = $this->getAllMIS();
         $userData = $this->getUserData();
         $departmentIdMapping = collect($deptData)->keyBy('id');
-        $misIdMapping = collect($misData)->keyBy('id');
+        // $misIdMapping = collect($misData)->keyBy('id');
         $supplierIdMapping = collect($supplierData)->keyBy('id');
         $userIdMapping = collect($userData)->keyBy('id');
 
         $romanNumeralMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
-        $fixedAssets->transform(function ($fixedAsset) use ($misIdMapping, $supplierIdMapping, $departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
+        $fixedAssets->transform(function ($fixedAsset) use ($supplierIdMapping, $departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
             $departmentId = $fixedAsset->id_departemen;
             $misId = $fixedAsset->id_mis;
             $supplierId = $fixedAsset->id_supplier;
             $userId = $fixedAsset->id_pic;
 
             $matchingDept = $departmentIdMapping->get($departmentId);
-            $matchingMis = $misIdMapping->get($misId);
+            // $matchingMis = $misIdMapping->get($misId);
             $matchingSupplier = $supplierIdMapping->get($supplierId);
             $matchingUser = $userIdMapping->get($userId);
 
@@ -331,7 +317,7 @@ class Controller extends BaseController
                 $fixedAsset->assetDepartment = $departmentName;
                 $fixedAsset->assetUserName = $userName;
                 $fixedAsset->assetUserPosition = $userJabatan;
-                $fixedAsset->assetMIS = $matchingMis;
+                // $fixedAsset->assetMIS = $fixedAsset->assetMIS;
                 $fixedAsset->assetSupplier = $matchingSupplier;
 
                 $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
