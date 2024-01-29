@@ -134,7 +134,17 @@ class Controller extends BaseController
                 $initialBalances[$year]['totalThisYear'] = floatval(sprintf("%.3f", $initialBalances[$year]['totalThisYear'] + $monthlyDepreciation));
                 $initialBalances[$year]['totalAccumulationUntilThisYear'] = floatval(sprintf("%.3f", $initialBalances[$year]['totalThisYear'] + $initialDepreciationValue));
                 if ($year > 2023) {
-                    $initialBalances[$year]['totalAccumulationUntilThisYear'] = floatval(sprintf("%.3f", $initialBalances[$year-1]['totalAccumulationUntilThisYear'] + $initialBalances[$year]['totalThisYear']));
+                    $previousYear = $year - 1;
+
+                    // Check if the previous year's index exists
+                    if (isset($initialBalances[$previousYear]['totalAccumulationUntilThisYear'])) {
+                        $accumulation = $initialBalances[$previousYear]['totalAccumulationUntilThisYear'];
+                    } else {
+                        // Set a default value if the index doesn't exist
+                        $accumulation = 0;
+                    }
+
+                    $initialBalances[$year]['totalAccumulationUntilThisYear'] = floatval(sprintf("%.3f", $accumulation + $initialBalances[$year]['totalThisYear']));
                 }
             }
 
