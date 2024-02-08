@@ -21,8 +21,8 @@ class Controller extends BaseController
     public $urlAllUser;
     public $urlAllSuppliers;
     public $urlSupplier;
-    public $urlAllMIS;
-    public $urlMIS;
+    // public $urlAllMIS;
+    // public $urlMIS;
 
     public function __construct()
     {
@@ -35,8 +35,8 @@ class Controller extends BaseController
             $this->urlAllUser = env('BASE_URL_PORTAL')."user";
             $this->urlAllSuppliers = env('BASE_URL_ODOO')."supplier/index";
             $this->urlSupplier = env('BASE_URL_ODOO')."supplier/get/";
-            $this->urlAllMIS = env('BASE_URL_ODOO')."mis/index";
-            $this->urlMIS = env('BASE_URL_ODOO')."mis/get/";
+            // $this->urlAllMIS = env('BASE_URL_ODOO')."mis/index";
+            // $this->urlMIS = env('BASE_URL_ODOO')."mis/get/";
             return $next($request);
         });
     }
