@@ -32,6 +32,7 @@ class FixedAssetsController extends Controller
         $fixedAssetsData = FixedAssets::with([
             'subGroup.group',
             'location.area',
+            'supplier',
             'adjustment',
             'fairValues',
             'valueInUses',
@@ -69,6 +70,7 @@ class FixedAssetsController extends Controller
             'subGroup.group',
             'fotoFixedAssets',
             'location.area',
+            'supplier',
             'adjustment',
             'fairValues',
             'valueInUses',

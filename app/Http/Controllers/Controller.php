@@ -19,8 +19,8 @@ class Controller extends BaseController
     public $urlAllDept;
     public $urlUser;
     public $urlAllUser;
-    public $urlAllSuppliers;
-    public $urlSupplier;
+    // public $urlAllSuppliers;
+    // public $urlSupplier;
     // public $urlAllMIS;
     // public $urlMIS;
 
@@ -33,27 +33,27 @@ class Controller extends BaseController
             $this->urlAllDept = env('BASE_URL_PORTAL')."department";
             $this->urlUser = env('BASE_URL_PORTAL')."user/get/";
             $this->urlAllUser = env('BASE_URL_PORTAL')."user";
-            $this->urlAllSuppliers = env('BASE_URL_ODOO')."supplier/index";
-            $this->urlSupplier = env('BASE_URL_ODOO')."supplier/get/";
+            // $this->urlAllSuppliers = env('BASE_URL_ODOO')."supplier/index";
+            // $this->urlSupplier = env('BASE_URL_ODOO')."supplier/get/";
             // $this->urlAllMIS = env('BASE_URL_ODOO')."mis/index";
             // $this->urlMIS = env('BASE_URL_ODOO')."mis/get/";
             return $next($request);
         });
     }
 
-    public function getAllSuppliers()
-    {
-        return Http::withHeaders([
-            'Authorization' => $this->token,
-        ])->get($this->urlAllSuppliers)->json()['data'] ?? [];
-    }
+    // public function getAllSuppliers()
+    // {
+    //     return Http::withHeaders([
+    //         'Authorization' => $this->token,
+    //     ])->get($this->urlAllSuppliers)->json()['data'] ?? [];
+    // }
 
-    public function getSupplier($id)
-    {
-        return Http::withHeaders([
-            'Authorization' => $this->token,
-        ])->get($this->urlSupplier . $id)->json()['data'] ?? [];
-    }
+    // public function getSupplier($id)
+    // {
+    //     return Http::withHeaders([
+    //         'Authorization' => $this->token,
+    //     ])->get($this->urlSupplier . $id)->json()['data'] ?? [];
+    // }
 
     public function calculateAssetAge($tglPerolehan, $tglNow)
     {
@@ -233,7 +233,7 @@ class Controller extends BaseController
         }
 
         // $misData = $this->getMIS($misId);
-        $supplierData = $this->getSupplier($supplierId);
+        // $supplierData = $this->getSupplier($supplierId);
 
         $departmentData = $deptData;
         $userData = $userData;
@@ -254,7 +254,7 @@ class Controller extends BaseController
         $fixedAsset->assetUserName = $userName;
         $fixedAsset->assetUserPosition = $userJabatan;
         $fixedAsset->assetMIS = $misId;
-        $fixedAsset->assetSupplier = $supplierData;
+        // $fixedAsset->assetSupplier = $supplierData;
 
         $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
         $fixedAsset->assetAge = $assetAge;
@@ -284,17 +284,18 @@ class Controller extends BaseController
 
     public function formatting($fixedAssets, $tglNow){
         $deptData = $this->getDepartmentData();
-        $supplierData = $this->getAllSuppliers();
+        // $supplierData = $this->getAllSuppliers();
         // $misData = $this->getAllMIS();
         $userData = $this->getUserData();
         $departmentIdMapping = collect($deptData)->keyBy('id');
         // $misIdMapping = collect($misData)->keyBy('id');
-        $supplierIdMapping = collect($supplierData)->keyBy('id');
+        // $supplierIdMapping = collect($supplierData)->keyBy('id');
         $userIdMapping = collect($userData)->keyBy('id');
 
         $romanNumeralMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
-        $fixedAssets->transform(function ($fixedAsset) use ($supplierIdMapping, $departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
+        $fixedAssets->transform(function ($fixedAsset) use ($departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
+        // $fixedAssets->transform(function ($fixedAsset) use ($supplierIdMapping, $departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
             $departmentId = $fixedAsset->id_departemen;
             $misId = $fixedAsset->id_mis;
             $supplierId = $fixedAsset->id_supplier;
@@ -302,7 +303,7 @@ class Controller extends BaseController
 
             $matchingDept = $departmentIdMapping->get($departmentId);
             // $matchingMis = $misIdMapping->get($misId);
-            $matchingSupplier = $supplierIdMapping->get($supplierId);
+            // $matchingSupplier = $supplierIdMapping->get($supplierId);
             $matchingUser = $userIdMapping->get($userId);
 
             if ($matchingDept) {
@@ -328,7 +329,7 @@ class Controller extends BaseController
                 $fixedAsset->assetUserName = $userName;
                 $fixedAsset->assetUserPosition = $userJabatan;
                 // $fixedAsset->assetMIS = $fixedAsset->assetMIS;
-                $fixedAsset->assetSupplier = $matchingSupplier;
+                // $fixedAsset->assetSupplier = $matchingSupplier;
 
                 $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
                 $fixedAsset->assetAge = $assetAge;
