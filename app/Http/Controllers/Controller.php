@@ -282,82 +282,72 @@ class Controller extends BaseController
         return $fixedAsset;
     }
 
-    public function formatting($fixedAssets, $tglNow){
-        $deptData = $this->getDepartmentData();
-        // $supplierData = $this->getAllSuppliers();
-        // $misData = $this->getAllMIS();
-        $userData = $this->getUserData();
-        $departmentIdMapping = collect($deptData)->keyBy('id');
-        // $misIdMapping = collect($misData)->keyBy('id');
-        // $supplierIdMapping = collect($supplierData)->keyBy('id');
-        $userIdMapping = collect($userData)->keyBy('id');
+    public function formatting($fixedAssets, $tglNow)
+{
+    $deptData = $this->getDepartmentData();
+    $userData = $this->getUserData();
+    $departmentIdMapping = collect($deptData)->keyBy('id');
+    $userIdMapping = collect($userData)->keyBy('id');
 
-        $romanNumeralMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+    $romanNumeralMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
-        $fixedAssets->transform(function ($fixedAsset) use ($departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
-        // $fixedAssets->transform(function ($fixedAsset) use ($supplierIdMapping, $departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
-            $departmentId = $fixedAsset->id_departemen;
-            $misId = $fixedAsset->id_mis;
-            $supplierId = $fixedAsset->id_supplier;
-            $userId = $fixedAsset->id_pic;
+    $fixedAssets->transform(function ($fixedAsset) use ($departmentIdMapping, $userIdMapping, $romanNumeralMonths, $tglNow) {
+        $departmentId = $fixedAsset->id_departemen;
+        $userId = $fixedAsset->id_pic;
 
-            $matchingDept = $departmentIdMapping->get($departmentId);
-            // $matchingMis = $misIdMapping->get($misId);
-            // $matchingSupplier = $supplierIdMapping->get($supplierId);
-            $matchingUser = $userIdMapping->get($userId);
+        $matchingDept = $departmentIdMapping->get($departmentId);
+        $matchingUser = $userIdMapping->get($userId);
 
-            if ($matchingDept) {
-                $departmentCode = $matchingDept['kode'];
-                $departmentName = $matchingDept['department'];
-                $userName = $matchingUser['name'];
-                $userJabatan = $matchingUser['jabatan'];
+        if ($matchingDept) {
+            $departmentCode = $matchingDept['kode'] ?? '';
+            $departmentName = $matchingDept['department'] ?? '';
+            $userName = $matchingUser['name'] ?? '';
+            $userJabatan = $matchingUser['jabatan'] ?? '';
 
-                $tglPerolehan = Carbon::parse($fixedAsset->tgl_perolehan);
-                $tglPerolehanMonth = $tglPerolehan->format('m');
-                $tglPerolehanYear = $tglPerolehan->format('Y');
-                $groupFormat = $fixedAsset->subGroup->group->format;
-                $fixedAsset->nilai_perolehan = floatval($fixedAsset->nilai_perolehan);
-                $fixedAsset->nilai_depresiasi_awal = floatval($fixedAsset->nilai_depresiasi_awal);
+            $tglPerolehan = Carbon::parse($fixedAsset->tgl_perolehan);
+            $tglPerolehanMonth = $tglPerolehan->format('m');
+            $tglPerolehanYear = $tglPerolehan->format('Y');
+            $groupFormat = $fixedAsset->subGroup->group->format ?? '';
+            $fixedAsset->nilai_perolehan = floatval($fixedAsset->nilai_perolehan);
+            $fixedAsset->nilai_depresiasi_awal = floatval($fixedAsset->nilai_depresiasi_awal);
 
-                $nomorAset = $fixedAsset->nomor;
+            $nomorAset = $fixedAsset->nomor ?? '';
 
-                $monthInRoman = $romanNumeralMonths[(int) $tglPerolehanMonth - 1];
+            $monthInRoman = $romanNumeralMonths[(int) $tglPerolehanMonth - 1];
 
-                $fixedAsset->nomor = "{$departmentCode}_INL/{$monthInRoman}/{$tglPerolehanYear}/{$groupFormat}{$nomorAset}";
-                $fixedAsset->spesifikasi = json_decode($fixedAsset->spesifikasi);
-                $fixedAsset->assetDepartment = $departmentName;
-                $fixedAsset->assetUserName = $userName;
-                $fixedAsset->assetUserPosition = $userJabatan;
-                // $fixedAsset->assetMIS = $fixedAsset->assetMIS;
-                // $fixedAsset->assetSupplier = $matchingSupplier;
+            $fixedAsset->nomor = "{$departmentCode}_INL/{$monthInRoman}/{$tglPerolehanYear}/{$groupFormat}{$nomorAset}";
+            $fixedAsset->spesifikasi = json_decode($fixedAsset->spesifikasi);
+            $fixedAsset->assetDepartment = $departmentName;
+            $fixedAsset->assetUserName = $userName;
+            $fixedAsset->assetUserPosition = $userJabatan;
 
-                $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
-                $fixedAsset->assetAge = $assetAge;
+            $assetAge = $this->calculateAssetAge($tglPerolehan, $tglNow);
+            $fixedAsset->assetAge = $assetAge;
 
-                $endMasaManfaatDate = $this->getEndMasaManfaatDate($fixedAsset);
-                $fixedAsset->endMasaManfaatDate = $endMasaManfaatDate;
+            $endMasaManfaatDate = $this->getEndMasaManfaatDate($fixedAsset);
+            $fixedAsset->endMasaManfaatDate = $endMasaManfaatDate;
 
-                $monthlyDepreciation = $this->getMonthlyDepreciation($fixedAsset);
-                $fixedAsset->monthlyDepreciation = $monthlyDepreciation;
-                $fixedAsset->annualDepreciation = $monthlyDepreciation * 12;
+            $monthlyDepreciation = $this->getMonthlyDepreciation($fixedAsset);
+            $fixedAsset->monthlyDepreciation = $monthlyDepreciation;
+            $fixedAsset->annualDepreciation = $monthlyDepreciation * 12;
 
-                $initialBalance = $this->calculateInitialBalance($fixedAsset->tgl_perolehan, $monthlyDepreciation, $fixedAsset->nilai_depresiasi_awal, $endMasaManfaatDate, $tglNow);
-                $fixedAsset->calculateInitialBalance = $initialBalance;
+            $initialBalance = $this->calculateInitialBalance($fixedAsset->tgl_perolehan, $monthlyDepreciation, $fixedAsset->nilai_depresiasi_awal, $endMasaManfaatDate, $tglNow);
+            $fixedAsset->calculateInitialBalance = $initialBalance;
 
-                $accumulatedDepreciation = $this->getAccumulatedDepreciation($assetAge, $monthlyDepreciation, $tglPerolehan, $fixedAsset->nilai_depresiasi_awal, $fixedAsset->masa_manfaat, $tglNow);
-                $fixedAsset->accumulatedDepreciation = $accumulatedDepreciation;
+            $accumulatedDepreciation = $this->getAccumulatedDepreciation($assetAge, $monthlyDepreciation, $tglPerolehan, $fixedAsset->nilai_depresiasi_awal, $fixedAsset->masa_manfaat, $tglNow);
+            $fixedAsset->accumulatedDepreciation = $accumulatedDepreciation;
 
-                $bookValue = $this->getBookValue($fixedAsset->nilai_perolehan, $fixedAsset->accumulatedDepreciation);
-                $fixedAsset->bookValue = $bookValue;
-            }
+            $bookValue = $this->getBookValue($fixedAsset->nilai_perolehan, $fixedAsset->accumulatedDepreciation);
+            $fixedAsset->bookValue = $bookValue;
+        }
 
-            $fixedAsset->formated_kode_aktiva = $fixedAsset->formated_kode_aktiva;
-            $fixedAsset->formated_kode_penyusutan = $fixedAsset->formated_kode_penyusutan;
+        $fixedAsset->formated_kode_aktiva = $fixedAsset->formated_kode_aktiva ?? '';
+        $fixedAsset->formated_kode_penyusutan = $fixedAsset->formated_kode_penyusutan ?? '';
 
-            return $fixedAsset;
-        });
-        return $fixedAssets;
-    }
+        return $fixedAsset;
+    });
+    return $fixedAssets;
+}
 
     public function formatLogs($logs)
     {
