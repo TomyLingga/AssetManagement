@@ -35,17 +35,17 @@ class AssetRecognitionJournalController extends Controller
         //     return $supplierData['name'] ?? '';
         // };
 
-        $fixedAssetsData->transform(function ($fixedAsset){
+        $fixedAssetsData->transform(function ($fixedAsset) {
             return [
-                'debet' => $fixedAsset->nama,
-                'kredit' => $fixedAsset->supplier->nama,
-                'grup' => $fixedAsset->subGroup->group->nama,
-                'sub_grup' => $fixedAsset->subGroup->nama,
-                'tgl_perolehan' => $fixedAsset->tgl_perolehan,
-                'nilai_perolehan' => $fixedAsset->nilai_perolehan,
-                'masa_manfaat' => $fixedAsset->masa_manfaat,
-                'formated_kode_aktiva' => $fixedAsset->formated_kode_aktiva,
-                'formated_kode_penyusutan' => $fixedAsset->formated_kode_penyusutan,
+                'debet' => $fixedAsset->nama ?? '',
+                'kredit' => $fixedAsset->supplier->nama ?? '',
+                'grup' => $fixedAsset->subGroup->group->nama ?? '',
+                'sub_grup' => $fixedAsset->subGroup->nama ?? '',
+                'tgl_perolehan' => $fixedAsset->tgl_perolehan ?? '',
+                'nilai_perolehan' => $fixedAsset->nilai_perolehan ?? '',
+                'masa_manfaat' => $fixedAsset->masa_manfaat ?? '',
+                'formated_kode_aktiva' => $fixedAsset->formated_kode_aktiva ?? '',
+                'formated_kode_penyusutan' => $fixedAsset->formated_kode_penyusutan ?? '',
             ];
         });
 
